@@ -43,6 +43,10 @@ class SelectExpr:
     column: Union[RecordMappingField, Any]
     alias: str = None
 
+    @property
+    def table_name(self):
+        return self.column.table.name
+
 
 @dataclass
 class SelectExprTree:
@@ -90,6 +94,10 @@ class ConditionExpr:
     op: Union[QUERY_OP_COMPARE, QUERY_OP_RELATION]
     value: Union[SelectExpr, Any]
 
+    @property
+    def table_name(self):
+        return self.column.table.name
+
 
 @dataclass
 class ConditionLogicExpr:
@@ -131,12 +139,16 @@ class QueryInfo:
                 '$select': ...
                 'id.eq': '$src.id'
             },
+            'user_info[]': {  // 外联表名
+                '$select': ...
+                'id.eq': '$src.id'
+            },
             'session': {
-                'id.eq': '$user_info.id'
+                'id.eq': '$user_info.id'  // 不能允许这个
             }
         },
 
-        'time.gt': '$session.time',
+        'time.gt': '$session.time', // 暂不允许inner join
     }
     // 关键字：$select、$select-，$order-by，$foreign-key
 
@@ -144,6 +156,7 @@ class QueryInfo:
     // 方案问题：
     // 1. value 有时是str 有时是表达式
     // 2. 如果不做限制，实际上任意一个接口都差不多具备全库查询能力
+    // 3. join时候要区分inner outter还是有些复杂
     {
         '$from': 'ta', // 此为隐含条件，不需要直接写出
         '$from_others': ['tb'],  // join的表
@@ -161,21 +174,30 @@ class QueryInfo:
     }
     // 关键字：$select、$select-，$order-by，$foreign-key，$or，$and
     """
-    from_default: Type[RecordMapping]
-    from_all_tables: Set[Type[RecordMapping]] = None
+    from_table: Type[RecordMapping]
 
-    select: List[Union[SelectExpr, SelectExprTree]] = field(default_factory=lambda: [])
-    select_exclude: Dict[Type[RecordMapping], Set[str]] = None
+    select: List[Union[RecordMappingField, Any]] = field(default_factory=lambda: [])
+    select_exclude: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
+
+    # select: List[Union[SelectExpr, SelectExprTree]] = field(default_factory=lambda: [])
+    # select_exclude: Dict[Type[RecordMapping], Set[str]] = None
 
     conditions: QueryConditions = None
     order_by: List = field(default_factory=lambda: [])
+
+    foreign_keys: Dict[str, 'QueryInfo'] = None
+    extra_variables: Dict[str, Any] = field(default_factory=lambda: {})
+
+    offset: int = 0
+    size: int = 20
 
     @property
     def select_for_curd(self):
         return self.select
 
     def __post_init__(self):
-        self.from_all_tables = {self.from_default}
+        pass
+        # self.from_all_tables = {self.from_default}
 
     def parse_query(self, data):
         pass

@@ -1,11 +1,11 @@
-from typing import Protocol, Dict
+from typing import Protocol, Dict, Optional
 
 from sqlalchemy.util import classproperty
 
 
 class RecordMappingField(str):
     def __init__(self, _):
-        self.table = None
+        self.table: Optional['RecordMapping'] = None
         super().__init__()
 
 
@@ -13,7 +13,7 @@ class RecordMapping(Protocol):
     __dataclass_fields__: Dict
 
     @classproperty
-    def table_name(cls):
+    def name(cls):
         return cls.__name__.lower()
 
     def __init_subclass__(cls, **kwargs):
