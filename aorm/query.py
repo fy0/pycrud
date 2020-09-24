@@ -189,15 +189,15 @@ class QueryInfo:
     extra_variables: Dict[str, Any] = field(default_factory=lambda: {})
 
     offset: int = 0
-    size: int = 20
+    limit: int = 20
 
     @property
     def select_for_curd(self):
         return self.select
-
-    def __post_init__(self):
-        pass
-        # self.from_all_tables = {self.from_default}
+    #
+    # def __post_init__(self):
+    #     pass
+    #     # self.from_all_tables = {self.from_default}
 
     def parse_query(self, data):
         pass

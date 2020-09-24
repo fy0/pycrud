@@ -3,6 +3,7 @@ from functools import reduce
 
 import peewee
 from peewee import ModelSelect
+from playhouse.shortcuts import model_to_dict
 
 from aorm.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from aorm.query import QueryInfo, SelectExpr, QueryConditions, ConditionExpr, ConditionLogicExpr
@@ -16,6 +17,12 @@ class User(RecordMapping):
     username: str
     password: str
     test: int = 1
+
+
+@dataclass
+class Topic(RecordMapping):
+    id: int
+    title: str
 
 
 from peewee import *
@@ -37,17 +44,18 @@ class Users(Model):
         database = db
 
 
-class Topic(Model):
+class Topics(Model):
     title = CharField(index=True, max_length=255)
     time = BigIntegerField(index=True)
     content = TextField()
+    user_id = IntegerField()
 
     class Meta:
         database = db
 
 
 db.connect()
-db.create_tables([Users, Topic], safe=True)
+db.create_tables([Users, Topics], safe=True)
 
 Users.create(name=1, username='test', nickname=2, password='pass')
 Users.create(name=11, username='test2', nickname=2, password='pass')
@@ -55,15 +63,15 @@ Users.create(name=21, username='test3', nickname=2, password='pass')
 Users.create(name=31, username='test4', nickname=2, password='pass')
 Users.create(name=41, username='test5', nickname=2, password='pass')
 
-Topic.create(title='test', time=1, content='content1')
-Topic.create(title='test2', time=1, content='content2')
-Topic.create(title='test3', time=1, content='content3')
-Topic.create(title='test4', time=1, content='content4')
+Topics.create(title='test', time=1, content='content1', user_id=1)
+Topics.create(title='test2', time=1, content='content2', user_id=1)
+Topics.create(title='test3', time=1, content='content3', user_id=2)
+Topics.create(title='test4', time=1, content='content4', user_id=2)
 
 
 name2model = {
     'user': Users,
-    'topic': Topic
+    'topic': Topics
 }
 
 _peewee_method_map = {
@@ -86,7 +94,18 @@ _peewee_method_map = {
 
 
 class PeeweeCrud:
-    def get_list(self, info: QueryInfo):
+    def get_list_with_foreign_keys(self, info: QueryInfo):
+        ret = self.get_list(info)
+
+        for i in ret:
+            r = model_to_dict(i)
+            print(r)
+
+            if info.foreign_keys:
+                for k, v in info.foreign_keys.items():
+                    print(k)
+
+    def get_list(self, info: QueryInfo, vars=None):
         select_fields = []
         model = name2model[info.from_table.name]
 
@@ -122,9 +141,12 @@ class PeeweeCrud:
             if ret:
                 q = q.where(*ret)
 
+        # 一些限制
+        q = q.limit(info.limit)
+        q = q.offset(info.offset)
+
         # 查询结果
-        for i in q:
-            print(11, i)
+        return q
 
 
 '''
@@ -165,7 +187,21 @@ q.conditions = QueryConditions([
     )
 ])
 
+
+q.foreign_keys = {
+    'topic': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
+        ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id)
+    ])),
+    'topic[]': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
+        ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id)
+    ]))
+}
+
 c = PeeweeCrud()
 print('list', c.get_list(q))
+
+
+r = c.get_list_with_foreign_keys(q)
+print(r)
 
 # print(q.to_json())
