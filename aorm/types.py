@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Optional
+from typing import Protocol, Dict, Optional, Any
 
 from sqlalchemy.util import classproperty
 
@@ -10,6 +10,7 @@ class RecordMappingField(str):
 
 
 class RecordMapping(Protocol):
+    id: Any
     __dataclass_fields__: Dict
 
     @classproperty

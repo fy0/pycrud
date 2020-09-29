@@ -90,9 +90,12 @@ class ConditionExpr:
     $ta:id.eq = 123
     $ta:id.eq = $tb:id
     """
-    column: Union[RecordMappingField, Any]  # 实际类型是 RecordMappingField
+    column: Union[RecordMappingField, Any]  # 实际类型是 RecordMappingField，且必须如此
     op: Union[QUERY_OP_COMPARE, QUERY_OP_RELATION]
-    value: Union[SelectExpr, Any]
+    value: Union[RecordMappingField, Any]
+
+    def __post_init__(self):
+        assert isinstance(self.column, RecordMappingField)
 
     @property
     def table_name(self):
@@ -112,6 +115,14 @@ class QueryConditions:
     @property
     def type(self):
         return 'and'
+
+
+@dataclass
+class QueryJoinInfo:
+    table: Type[RecordMapping]
+    conditions: QueryConditions
+    type: Union[Literal['inner', 'left']] = 'inner'
+    limit: int = 0  # unlimited
 
 
 @dataclass
@@ -186,10 +197,12 @@ class QueryInfo:
     order_by: List = field(default_factory=lambda: [])
 
     foreign_keys: Dict[str, 'QueryInfo'] = None
-    extra_variables: Dict[str, Any] = field(default_factory=lambda: {})
 
     offset: int = 0
     limit: int = 20
+
+    join: List[QueryJoinInfo] = None
+    extra: Any = None
 
     @property
     def select_for_curd(self):
