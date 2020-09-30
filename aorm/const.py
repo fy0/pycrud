@@ -1,8 +1,9 @@
 from enum import Enum
 
+
 class QUERY_OP_COMPARE(Enum):
-    EQ = ('eq', '==', '=')
-    NE = ('ne', '!=', '<>')
+    EQ = ('eq', '==')
+    NE = ('ne', '!=')
     LT = ('lt', '<')
     LE = ('le', '<=')
     GE = ('ge', '>=')
