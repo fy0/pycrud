@@ -121,7 +121,7 @@ class QueryConditions:
 class QueryJoinInfo:
     table: Type[RecordMapping]
     conditions: QueryConditions
-    type: Union[Literal['inner', 'left']] = 'inner'
+    type: Union[Literal['inner', 'left']] = 'left'
     limit: int = 0  # unlimited
 
 
@@ -190,9 +190,6 @@ class QueryInfo:
     select: List[Union[RecordMappingField, Any]] = field(default_factory=lambda: [])
     select_exclude: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
 
-    # select: List[Union[SelectExpr, SelectExprTree]] = field(default_factory=lambda: [])
-    # select_exclude: Dict[Type[RecordMapping], Set[str]] = None
-
     conditions: QueryConditions = None
     order_by: List = field(default_factory=lambda: [])
 
@@ -207,37 +204,66 @@ class QueryInfo:
     @property
     def select_for_curd(self):
         return self.select
-    #
-    # def __post_init__(self):
-    #     pass
-    #     # self.from_all_tables = {self.from_default}
 
     def parse_query(self, data):
         pass
 
-    def parse_json(self, data):
+    @classmethod
+    def parse_json(cls, table, data):
+        get_items = lambda keys: [getattr(table, x) for x in keys]
+        q = cls(table)
+
+        def parse_select(select_text, unselect_text):
+            if select_text is None:
+                selected = get_items(table.__dataclass_fields__.keys())
+            else:
+                selected_columns = set(filter(lambda x: x, map(str.strip, select_text.split(','))))
+                selected = get_items(selected_columns)
+
+            if unselect_text is not None:
+                unselected_columns = set(filter(lambda x: x, map(str.strip, unselect_text.split(','))))
+                unselected = get_items(unselected_columns)
+            else:
+                unselected = None
+
+            return selected, unselected
+
+        def parse_conditions(data):
+            conditions = []
+
+            for key, value in data.items():
+                if key.startswith('$'):
+                    if key == '$or':
+                        pass
+                    elif key == '$and':
+                        pass
+
+                elif '.' in key:
+                    field_name, op = key.split('.', 1)
+                    cls._parse_add_condition(field_name, op, value)
+
+            return conditions
+
+        q.select, q.select_exclude = parse_select(data.get('$select'), data.get('$select-'))
+        q.conditions = parse_conditions(data)
+
         for key, value in data.items():
             if key.startswith('$'):
-                if key == '$select':
+                if key == '$order-by':
                     pass
-                elif key == '$select-':
-                    pass
-                elif key == '$order-by':
-                    pass
-                if key == '$foreign-key':
-                    pass
-                elif key == '$or':
-                    pass
-                elif key == '$and':
+                elif key == '$foreign-key':
                     pass
 
                 continue
 
             if '.' in key:
                 field_name, op = key.split('.', 1)
-                self._parse_add_condition(field_name, op, value)
+                cls._parse_add_condition(field_name, op, value)
 
-    def _parse_add_condition(self, field_name, op, value):
+        return q
+
+    @classmethod
+    def _parse_add_condition(cls, field_name, op, value):
         if field_name in self.from_.__annotations__:
             self.conditions.append(f(field_name).binary(op, value))
 
