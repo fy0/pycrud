@@ -1,6 +1,7 @@
 from typing import Protocol, Dict, Optional, Any
 
-from sqlalchemy.util import classproperty
+from datalayer.cls_property import classproperty
+from datalayer.utils import camel_case_to_underscore_case
 
 
 class RecordMappingField(str):
@@ -13,11 +14,14 @@ class RecordMapping(Protocol):
     id: Any
     __dataclass_fields__: Dict
 
+    all_mappings = {}
+
     @classproperty
     def name(cls):
         return cls.__name__.lower()
 
     def __init_subclass__(cls, **kwargs):
+        cls.all_mappings[camel_case_to_underscore_case(cls.__name__)] = cls
         for i in cls.__annotations__:
             f = RecordMappingField(i)
             f.table = cls

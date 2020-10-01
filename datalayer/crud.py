@@ -7,10 +7,10 @@ import pypika
 from pypika import Query
 from pypika.terms import ComplexCriterion
 
-from aorm.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from aorm.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
-from aorm.types import RecordMapping, RecordMappingField
-from aorm.utils import get_class_full_name
+from datalayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from datalayer.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
+from datalayer.types import RecordMapping, RecordMappingField
+from datalayer.utils import get_class_full_name
 
 _sql_method_map = {
     # '+': '__pos__',

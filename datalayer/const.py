@@ -25,6 +25,13 @@ class QUERY_OP_RELATION(Enum):
     CONTAINS_ANY = ('contains_any',)  # ArrayField only
 
 
+QUERY_OP_FROM_TXT = {}
+
+for i in (QUERY_OP_COMPARE, QUERY_OP_RELATION):
+    for j in QUERY_OP_COMPARE:
+        for opval in j.value:
+            QUERY_OP_FROM_TXT[opval] = j
+
 '''
 class QUERY_OP(Enum, QUERY_OP_LOGIC, QUERY_OP_COMPARE, QUERY_OP_RELATION):
     pass

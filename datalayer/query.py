@@ -1,10 +1,12 @@
+import json
 from dataclasses import dataclass, field
 from typing import List, Union, Set, Dict, Any, Type
 
 from typing_extensions import Literal
 
-from aorm.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from aorm.types import RecordMapping, RecordMappingField
+from datalayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
+from datalayer.error import UnknownQueryOperator, InvalidQueryConditionValue
+from datalayer.types import RecordMapping, RecordMappingField
 
 
 class LogicRelation:
@@ -209,7 +211,7 @@ class QueryInfo:
         pass
 
     @classmethod
-    def parse_json(cls, table, data):
+    def parse_json(cls, table, data, from_http_query=False):
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
 
@@ -217,16 +219,23 @@ class QueryInfo:
             if select_text is None:
                 selected = get_items(table.__dataclass_fields__.keys())
             else:
-                selected_columns = set(filter(lambda x: x, map(str.strip, select_text.split(','))))
+                selected_columns = list(filter(lambda x: x, map(str.strip, select_text.split(','))))
                 selected = get_items(selected_columns)
 
             if unselect_text is not None:
-                unselected_columns = set(filter(lambda x: x, map(str.strip, unselect_text.split(','))))
+                unselected_columns = list(filter(lambda x: x, map(str.strip, unselect_text.split(','))))
                 unselected = get_items(unselected_columns)
             else:
                 unselected = None
 
             return selected, unselected
+
+        def parse_value(val):
+            if isinstance(val, str) and val.startswith('$'):
+                a, b = val.split(':', 1)
+                t = RecordMapping.all_mappings.get(a[1:])
+                return getattr(t, b)
+            return val
 
         def parse_conditions(data):
             conditions = []
@@ -239,13 +248,26 @@ class QueryInfo:
                         pass
 
                 elif '.' in key:
-                    field_name, op = key.split('.', 1)
-                    cls._parse_add_condition(field_name, op, value)
+                    field_name, op_name = key.split('.', 1)
+                    if from_http_query:
+                        try:
+                            value = json.loads(value)
+                        except (TypeError, json.JSONDecodeError):
+                            raise InvalidQueryConditionValue('right value must can be unserializable with json.loads')
+
+                    op = QUERY_OP_FROM_TXT.get(op_name)
+                    if op is None:
+                        raise UnknownQueryOperator(op_name)
+
+                    if op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS, QUERY_OP_RELATION.CONTAINS_ANY):
+                        assert isinstance(value, List), 'The right value of relation operator must be list'
+
+                    conditions.append(ConditionExpr(getattr(table, field_name), op, value))
 
             return conditions
 
         q.select, q.select_exclude = parse_select(data.get('$select'), data.get('$select-'))
-        q.conditions = parse_conditions(data)
+        q.conditions = QueryConditions(parse_conditions(data))
 
         for key, value in data.items():
             if key.startswith('$'):
@@ -258,14 +280,9 @@ class QueryInfo:
 
             if '.' in key:
                 field_name, op = key.split('.', 1)
-                cls._parse_add_condition(field_name, op, value)
+                # _parse__condition(field_name, op, value)
 
         return q
-
-    @classmethod
-    def _parse_add_condition(cls, field_name, op, value):
-        if field_name in self.from_.__annotations__:
-            self.conditions.append(f(field_name).binary(op, value))
 
     def to_json(self):
         return ''
