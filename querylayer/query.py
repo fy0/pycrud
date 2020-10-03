@@ -4,9 +4,9 @@ from typing import List, Union, Set, Dict, Any, Type
 
 from typing_extensions import Literal
 
-from datalayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
-from datalayer.error import UnknownQueryOperator, InvalidQueryConditionValue
-from datalayer.types import RecordMapping, RecordMappingField
+from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
+from querylayer.error import UnknownQueryOperator, InvalidQueryConditionValue
+from querylayer.types import RecordMapping, RecordMappingField
 
 
 class LogicRelation:
@@ -243,9 +243,9 @@ class QueryInfo:
             for key, value in data.items():
                 if key.startswith('$'):
                     if key == '$or':
-                        pass
+                        conditions.append(ConditionLogicExpr('or', parse_conditions(value)))
                     elif key == '$and':
-                        pass
+                        conditions.append(ConditionLogicExpr('and', parse_conditions(value)))
 
                 elif '.' in key:
                     field_name, op_name = key.split('.', 1)

@@ -4,10 +4,10 @@ from dataclasses import dataclass
 import peewee
 from pypika import Table
 
-from datalayer.const import QUERY_OP_COMPARE
-from datalayer.crud import SQLCrud, PeeweeCrud
-from datalayer.query import QueryInfo, QueryConditions, ConditionExpr
-from datalayer.types import RecordMapping
+from querylayer.const import QUERY_OP_COMPARE
+from querylayer.crud import SQLCrud, PeeweeCrud
+from querylayer.query import QueryInfo, QueryConditions, ConditionExpr
+from querylayer.types import RecordMapping
 
 
 @dataclass

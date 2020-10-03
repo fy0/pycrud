@@ -1,7 +1,7 @@
 from typing import Protocol, Dict, Optional, Any
 
-from datalayer.cls_property import classproperty
-from datalayer.utils import camel_case_to_underscore_case
+from querylayer.cls_property import classproperty
+from querylayer.utils import camel_case_to_underscore_case
 
 
 class RecordMappingField(str):
