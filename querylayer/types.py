@@ -1,7 +1,7 @@
 from typing import Protocol, Dict, Optional, Any
 
-from querylayer.cls_property import classproperty
-from querylayer.utils import camel_case_to_underscore_case
+from querylayer.utils.cls_property import classproperty
+from querylayer.utils.name_helper import camel_case_to_underscore_case
 
 
 class RecordMappingField(str):
@@ -18,7 +18,7 @@ class RecordMapping(Protocol):
 
     @classproperty
     def name(cls):
-        return cls.__name__.lower()
+        return camel_case_to_underscore_case(cls.__name__)
 
     def __init_subclass__(cls, **kwargs):
         cls.all_mappings[camel_case_to_underscore_case(cls.__name__)] = cls
@@ -26,3 +26,11 @@ class RecordMapping(Protocol):
             f = RecordMappingField(i)
             f.table = cls
             setattr(cls, i, f)
+
+    @classmethod
+    def from_data(cls, data):
+        pass
+
+    @property
+    def fk_extra(self):
+        return getattr(self, '$extra', None)

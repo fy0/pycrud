@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "querylayer"
+version = "0.1.0"
+description = ""
+authors = ["fy <fy0748@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.6.9"
+PyPika = "^0.42.1"
+typing-extensions = ">=3.7.4"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=5.2"
+peewee = ">=3.13.3"
+SQLAlchemy = ">=1.3.19"
+tortoise-orm = ">=0.16.16"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

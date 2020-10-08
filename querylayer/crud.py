@@ -10,7 +10,7 @@ from pypika.terms import ComplexCriterion
 from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
 from querylayer.types import RecordMapping, RecordMappingField
-from querylayer.utils import get_class_full_name
+from querylayer.utils.name_helper import get_class_full_name
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -40,6 +40,24 @@ class QueryResultRow:
     base: Type[RecordMapping]
     extra: Any = field(default_factory=lambda: {})
 
+    def to_data(self):
+        data = {}
+        for i, j in zip(self.info.select_for_curd, self.raw_data):
+            if i.table == self.base:
+                data[i] = j
+
+        if self.extra:
+            ex = {}
+            for k, v in self.extra.items():
+                if isinstance(v, List):
+                    ex[k] = [x.to_dict() for x in v]
+                elif isinstance(v, QueryResultRow):
+                    ex[k] = v.to_dict()
+                else:
+                    ex[k] = None
+            data['$extra'] = ex
+        return data
+
     def to_dict(self):
         data = {}
         for i, j in zip(self.info.select_for_curd, self.raw_data):
@@ -66,10 +84,10 @@ class QueryResultRow:
 class SQLCrud:
     mapping2model: Dict[Type[RecordMapping], pypika.Table]
 
-    def get_list_with_foreign_keys(self, info: QueryInfo):
-        ret = self.get_list(info)
+    async def get_list_with_foreign_keys(self, info: QueryInfo):
+        ret = await self.get_list(info)
 
-        def solve(ret_lst, main_table, fk_queries):
+        async def solve(ret_lst, main_table, fk_queries):
             pk_items = [x.id for x in ret_lst]
 
             for raw_name, query in fk_queries.items():
@@ -82,7 +100,7 @@ class SQLCrud:
                 q.join = [QueryJoinInfo(query.from_table, query.conditions, limit=limit)]
 
                 elist = []
-                for x in self.get_list(q):
+                for x in await self.get_list(q):
                     x.base = query.from_table
                     elist.append(x)
 
@@ -100,12 +118,12 @@ class SQLCrud:
                     i.extra[raw_name] = extra.get(i.id)
 
                 if query.foreign_keys:
-                    solve(elist, query.from_table, query.foreign_keys)
+                    await solve(elist, query.from_table, query.foreign_keys)
 
-        solve(ret, info.from_table, info.foreign_keys)
+        await solve(ret, info.from_table, info.foreign_keys)
         return ret
 
-    def get_list(self, info: QueryInfo):
+    async def get_list(self, info: QueryInfo):
         model = self.mapping2model[info.from_table]
 
         # 选择项
@@ -167,7 +185,7 @@ class SQLCrud:
 
         # 查询结果
         ret = []
-        cursor = self.execute_sql(q.get_sql())
+        cursor = await self.execute_sql(q.get_sql())
 
         for i in cursor:
             ret.append(QueryResultRow(i[0], i[1:], info, info.from_table))
@@ -175,7 +193,7 @@ class SQLCrud:
         return ret
 
     @abstractmethod
-    def execute_sql(self, sql):
+    async def execute_sql(self, sql):
         pass
 
 
@@ -183,5 +201,5 @@ class SQLCrud:
 class PeeweeCrud(SQLCrud):
     db: Any
 
-    def execute_sql(self, sql):
+    async def execute_sql(self, sql):
         return self.db.execute_sql(sql)

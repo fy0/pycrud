@@ -201,7 +201,7 @@ class QueryInfo:
     limit: int = 20
 
     join: List[QueryJoinInfo] = None
-    extra: Any = None
+    select_hidden: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
 
     @property
     def select_for_curd(self):
@@ -240,11 +240,18 @@ class QueryInfo:
         def parse_conditions(data):
             conditions = []
 
+            def logic_op_check(key: str, op_prefix: str) -> bool:
+                if key.startswith(op_prefix):
+                    if len(key) == len(op_prefix):
+                        return True
+                    return key[len(op_prefix):].isdigit()
+                return False
+
             for key, value in data.items():
                 if key.startswith('$'):
-                    if key == '$or':
+                    if logic_op_check(key, '$or'):
                         conditions.append(ConditionLogicExpr('or', parse_conditions(value)))
-                    elif key == '$and':
+                    elif logic_op_check(key, '$and'):
                         conditions.append(ConditionLogicExpr('and', parse_conditions(value)))
 
                 elif '.' in key:

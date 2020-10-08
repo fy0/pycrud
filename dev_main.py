@@ -1,3 +1,4 @@
+import asyncio
 import re
 from dataclasses import dataclass
 
@@ -86,64 +87,67 @@ Topics2.create(title='test3', time=1, content='content3', user_id=2)
 Topics2.create(title='test4', time=1, content='content4', user_id=2)
 
 
-'''
-f().or_(
-    f(User.nickname).binary(QUERY_OP.EQ, 1),
-    f(User.nickname).binary(QUERY_OP.EQ, 2),
-)'''
+async def main():
+    '''
+    f().or_(
+        f(User.nickname).binary(QUERY_OP.EQ, 1),
+        f(User.nickname).binary(QUERY_OP.EQ, 2),
+    )'''
+
+    q = QueryInfo(User)
+    q.select = [
+        User.id,
+        User.username,
+        User.password,
+        User.nickname,
+    ]
+
+    q.conditions = QueryConditions([])
+
+    q.foreign_keys = {
+        'topic': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
+            # ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id),
+            ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, 2),
+            # ConditionLogicExpr('and', [
+            #     ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, '3')
+            # ])
+            # ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, '3')
+        ]), foreign_keys={
+            'user': QueryInfo(User, [User.id, User.nickname], conditions=QueryConditions([
+                ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, User.id),
+            ]))
+        }),
+        # 'topic[]': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
+        #     ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id)
+        # ]))
+    }
+
+    c = PeeweeCrud({
+        User: Table('users'),
+        Topic: Table('topics')
+    }, db)
+    # print('list', c.get_list(q))
+
+    r = await c.get_list_with_foreign_keys(q)
+    for i in r:
+        a = User.from_data(i)
+        print(222, a, i)
+        print(i.to_dict())
 
 
-q = QueryInfo(User)
-q.select = [
-    User.id,
-    User.username,
-    User.password,
-    User.nickname,
-]
+    # print(q.to_json())
+    print(type(Topic.id))
+    print(Topic.__dataclass_fields__.keys())
 
-q.conditions = QueryConditions([])
+    print(222, [getattr(Topic, x) for x in Topic.__dataclass_fields__.keys()])
+
+    # print(type(Topic.__dataclass_fields__['id']))
 
 
-q.foreign_keys = {
-    'topic': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
-        # ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id),
-        ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, 2),
-        # ConditionLogicExpr('and', [
-        #     ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, '3')
-        # ])
-        # ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, '3')
-    ]), foreign_keys={
-        'user': QueryInfo(User, [User.id, User.nickname], conditions=QueryConditions([
-            ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, User.id),
-        ]))
-    }),
-    # 'topic[]': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
-    #     ConditionExpr(Topic.id, QUERY_OP_COMPARE.EQ, User.id)
-    # ]))
-}
+    q = QueryInfo.parse_json(User, {
+        '$select': 'id, nickname, username',
+        '$select-': ''
+    })
+    print(q)
 
-c = PeeweeCrud({
-    User: Table('users'),
-    Topic: Table('topics')
-}, db)
-# print('list', c.get_list(q))
-
-r = c.get_list_with_foreign_keys(q)
-for i in r:
-    print(i.to_dict())
-
-
-# print(q.to_json())
-print(type(Topic.id))
-print(Topic.__dataclass_fields__.keys())
-
-print(222, [getattr(Topic, x) for x in Topic.__dataclass_fields__.keys()])
-
-# print(type(Topic.__dataclass_fields__['id']))
-
-
-q = QueryInfo.parse_json(User, {
-    '$select': 'id, nickname, username',
-    '$select-': ''
-})
-print(q)
+asyncio.run(main())

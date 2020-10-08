@@ -1,3 +1,4 @@
+import re
 import pytest
 from dataclasses import dataclass
 
@@ -53,10 +54,10 @@ def test_condition_simple2():
     assert cond.value == 5
 
 
-@pytest.mark.parametrize('op_name', ['and', 'or'])
-def test_condition_logic_1(op_name):
+@pytest.mark.parametrize('key, op_name', [('and', 'and'), ('or', 'or'), ('and1', 'and'), ('or0', 'or'), ('or10001', 'or')])
+def test_condition_logic_1(key, op_name):
     q = QueryInfo.parse_json(User, {
-        '$' + op_name: {
+        '$' + key: {
             'nickname.eq': 'test',
             'test.lt': 5
         }
@@ -88,3 +89,14 @@ def test_condition_logic_2():
     assert isinstance(cond.items[1], ConditionLogicExpr)
     assert cond.items[1].type == 'or'
     assert cond.items[1].items[1].value == 10
+
+
+@pytest.mark.parametrize('key', ['$oracle', '$Or', '$OR'])
+def test_condition_logic_failed_1(key):
+    q = QueryInfo.parse_json(User, {
+        '$' + key: {
+            'nickname.eq': 'test',
+            'test.lt': 5
+        }
+    })
+    assert len(q.conditions.items) == 0
