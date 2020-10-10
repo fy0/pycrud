@@ -128,12 +128,13 @@ async def main():
     }, db)
     # print('list', c.get_list(q))
 
+    c.get_list()
+
     r = await c.get_list_with_foreign_keys(q)
     for i in r:
         a = User.from_data(i)
         print(222, a, i)
         print(i.to_dict())
-
 
     # print(q.to_json())
     print(type(Topic.id))
@@ -142,7 +143,6 @@ async def main():
     print(222, [getattr(Topic, x) for x in Topic.__dataclass_fields__.keys()])
 
     # print(type(Topic.__dataclass_fields__['id']))
-
 
     q = QueryInfo.parse_json(User, {
         '$select': 'id, nickname, username',

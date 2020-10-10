@@ -192,6 +192,15 @@ class SQLCrud:
 
         return ret
 
+    async def delete(self, info: QueryInfo, limit: int = 0):
+        pass
+
+    async def update(self, info: QueryInfo, values, limit: int = 0):
+        pass
+
+    async def insert_many(self, values_list):
+        pass
+
     @abstractmethod
     async def execute_sql(self, sql):
         pass
