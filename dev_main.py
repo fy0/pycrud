@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import re
 from dataclasses import dataclass
 
@@ -128,8 +129,6 @@ async def main():
     }, db)
     # print('list', c.get_list(q))
 
-    c.get_list()
-
     r = await c.get_list_with_foreign_keys(q)
     for i in r:
         a = User.from_data(i)
@@ -143,6 +142,9 @@ async def main():
     print(222, [getattr(Topic, x) for x in Topic.__dataclass_fields__.keys()])
 
     # print(type(Topic.__dataclass_fields__['id']))
+
+    # print(await c.update(q, {'username': 1}))
+    # print(await c.insert_many(User, [{'name': '5', 'username': 'c1'}, {'name': 'c2'}]))
 
     q = QueryInfo.parse_json(User, {
         '$select': 'id, nickname, username',

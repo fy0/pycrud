@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from dataclasses import dataclass, field
 from typing import List, Union, Set, Dict, Any, Type
@@ -202,6 +203,9 @@ class QueryInfo:
 
     join: List[QueryJoinInfo] = None
     select_hidden: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
+
+    def clone(self):
+        return QueryInfo(*dataclasses.astuple(self))
 
     @property
     def select_for_curd(self):

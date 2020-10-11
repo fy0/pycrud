@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Any, Union, Tuple, List, Type, Dict
+from typing import Any, Union, Tuple, List, Type, Dict, Iterable
 
 import pypika
 from pypika import Query
@@ -11,6 +11,7 @@ from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
 from querylayer.types import RecordMapping, RecordMappingField
 from querylayer.utils.name_helper import get_class_full_name
+from querylayer.values import ValuesToWrite
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -26,7 +27,7 @@ _sql_method_map = {
     QUERY_OP_RELATION.IS: '__eq__',  # __rshift__ = _e(OP.IS)
     QUERY_OP_RELATION.IS_NOT: '__ne__',
     QUERY_OP_RELATION.CONTAINS: 'contains',
-    QUERY_OP_RELATION.CONTAINS_ANY: 'contains_any',
+    QUERY_OP_RELATION.CONTAINS_ANY: 'has_any_keys',
     QUERY_OP_RELATION.PREFIX: 'startswith',
 }
 
@@ -192,14 +193,43 @@ class SQLCrud:
 
         return ret
 
-    async def delete(self, info: QueryInfo, limit: int = 0):
-        pass
+    async def delete(self, info: QueryInfo):
+        model = self.mapping2model[info.from_table]
+        qi = info.clone()
+        qi.select = []
+        lst = await self.get_list(qi)
 
-    async def update(self, info: QueryInfo, values, limit: int = 0):
-        pass
+        # 选择项
+        sql = Query().from_(model).delete().where(model.id.isin([x.id for x in lst]))
+        return await self.execute_sql(sql.get_sql())
 
-    async def insert_many(self, values_list):
-        pass
+    async def update(self, info: QueryInfo, values: ValuesToWrite):
+        model = self.mapping2model[info.from_table]
+        qi = info.clone()
+        qi.select = []
+        lst = await self.get_list(qi)
+
+        # 选择项
+        sql = Query().update(model).where(model.id.isin([x.id for x in lst]))
+        for k, v in values.items():
+            sql = sql.set(k, v)
+
+        # print(5555, sql.get_sql())
+        return await self.execute_sql(sql.get_sql())
+
+    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite]):
+        model = self.mapping2model[table]
+
+        sql_lst = []
+        for i in values_list:
+            sql = Query().into(model)
+            sql = sql.columns(*i.keys()).insert(*i.values())
+            sql_lst.append(sql)
+            # sql = sql.columns(*i.keys()).insert(*i.values())
+        for i in sql_lst:
+            await self.execute_sql(i.get_sql())
+        # print(';\n'.join([x.get_sql() for x in sql_lst]))
+        # return await self.execute_sql(';\n'.join([x.get_sql() for x in sql_lst]))
 
     @abstractmethod
     async def execute_sql(self, sql):

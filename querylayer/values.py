@@ -7,10 +7,9 @@ if TYPE_CHECKING:
 
 
 class ValuesToWrite(dict):
-    def __init__(self, raw_data=None, view: 'RecordMapping'=None):
+    def __init__(self, raw_data=None, rm: 'RecordMapping' = None):
         super().__init__()
-        self.returning = False
-        self.view = view
+        self.rm = rm
 
         # design of incr/desc:
         # 1. incr/desc/normal_set can't be appear in the same time
@@ -38,9 +37,6 @@ class ValuesToWrite(dict):
                 v = v_all
 
             if k.startswith('$'):
-                continue
-            elif k == 'returning':
-                self.returning = True
                 continue
             elif '.' in k:
                 # TODO: 不允许 incr 和普通赋值同时出现
