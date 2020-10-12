@@ -1,9 +1,10 @@
 import asyncio
-import dataclasses
 import re
-from dataclasses import dataclass
+from typing import Optional
 
 import peewee
+from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from pypika import Table
 
 from querylayer.const import QUERY_OP_COMPARE
@@ -12,7 +13,6 @@ from querylayer.query import QueryInfo, QueryConditions, ConditionExpr
 from querylayer.types import RecordMapping
 
 
-@dataclass
 class User(RecordMapping):
     id: int
     nickname: str
@@ -21,11 +21,11 @@ class User(RecordMapping):
     test: int = 1
 
 
-@dataclass
 class Topic(RecordMapping):
     id: int
     title: str
     user_id: int
+    hello: Optional[str] = None
 
 
 from playhouse.db_url import connect
@@ -143,8 +143,11 @@ async def main():
 
     # print(type(Topic.__dataclass_fields__['id']))
 
-    # print(await c.update(q, {'username': 1}))
-    # print(await c.insert_many(User, [{'name': '5', 'username': 'c1'}, {'name': 'c2'}]))
+    # print(await c.update(q, {'username': '1'}))
+    print('insert', await c.insert_many(User, [
+        {'name': 'c1', 'username': 'c1', 'nickname': 'c1', 'password': 'pass'},
+        {'name': 'c2', 'username': 'c2', 'nickname': 'c2', 'password': 'pass'},
+    ], True))
 
     q = QueryInfo.parse_json(User, {
         '$select': 'id, nickname, username',
@@ -152,4 +155,26 @@ async def main():
     })
     print(q)
 
-asyncio.run(main())
+
+t = Topic.parse_obj({
+    'id': 1.5,
+    'title': 111.1,
+    'user_id': '444',
+    'hello': 11111
+})
+
+print(Topic.id, type(Topic.id))
+print(77777777, t)
+
+
+t2 = Topic.partial_model.parse_obj({
+    'user_id': '444',
+    'hello': 11111
+})
+
+print(8888888, t2, t2.__fields_set__)
+
+# t = Topic(1, '222', 3)
+# print(t, type(Topic))
+
+# asyncio.run(main())

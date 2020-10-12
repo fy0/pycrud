@@ -124,7 +124,7 @@ class SQLCrud:
         await solve(ret, info.from_table, info.foreign_keys)
         return ret
 
-    async def get_list(self, info: QueryInfo):
+    async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
         model = self.mapping2model[info.from_table]
 
         # 选择项
@@ -181,6 +181,8 @@ class SQLCrud:
                         )
 
         # 一些限制
+        if info.order_by:
+            q = q.orderby(info.order_by)
         q = q.limit(info.limit)
         q = q.offset(info.offset)
 
@@ -193,7 +195,7 @@ class SQLCrud:
 
         return ret
 
-    async def delete(self, info: QueryInfo):
+    async def delete(self, info: QueryInfo) -> int:
         model = self.mapping2model[info.from_table]
         qi = info.clone()
         qi.select = []
@@ -201,9 +203,10 @@ class SQLCrud:
 
         # 选择项
         sql = Query().from_(model).delete().where(model.id.isin([x.id for x in lst]))
-        return await self.execute_sql(sql.get_sql())
+        ret = await self.execute_sql(sql.get_sql())
+        return ret.rowcount
 
-    async def update(self, info: QueryInfo, values: ValuesToWrite):
+    async def update(self, info: QueryInfo, values: ValuesToWrite, returning=False) -> Union[int, List[QueryResultRow]]:
         model = self.mapping2model[info.from_table]
         qi = info.clone()
         qi.select = []
@@ -214,22 +217,29 @@ class SQLCrud:
         for k, v in values.items():
             sql = sql.set(k, v)
 
-        # print(5555, sql.get_sql())
-        return await self.execute_sql(sql.get_sql())
+        ret = await self.execute_sql(sql.get_sql())
+        if returning:
+            return await self.get_list(info)
+        return ret.rowcount
 
-    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite]):
+    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], returning=False)  -> Union[List[Any], List[QueryResultRow]]:
         model = self.mapping2model[table]
 
         sql_lst = []
         for i in values_list:
-            sql = Query().into(model)
-            sql = sql.columns(*i.keys()).insert(*i.values())
+            sql = Query().into(model).columns(*i.keys()).insert(*i.values())
             sql_lst.append(sql)
-            # sql = sql.columns(*i.keys()).insert(*i.values())
+
+        ret = []
         for i in sql_lst:
-            await self.execute_sql(i.get_sql())
-        # print(';\n'.join([x.get_sql() for x in sql_lst]))
-        # return await self.execute_sql(';\n'.join([x.get_sql() for x in sql_lst]))
+            ret.append(await self.execute_sql(i.get_sql()))
+
+        if returning:
+            qi = QueryInfo(table, [getattr(table, x) for x in table.__dataclass_fields__.keys()], conditions=QueryConditions([
+                ConditionExpr(table.id, QUERY_OP_RELATION.IN, [x.lastrowid for x in ret]),
+            ]))
+            return await self.get_list(qi)
+        return [x.lastrowid for x in ret]
 
     @abstractmethod
     async def execute_sql(self, sql):
