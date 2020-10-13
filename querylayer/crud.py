@@ -83,12 +83,19 @@ class QueryResultRow:
 
 @dataclass
 class SQLCrud:
-    mapping2model: Dict[Type[RecordMapping], pypika.Table]
+    mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
+
+    def __post_init__(self):
+        for k, v in self.mapping2model.items():
+            if isinstance(v, str):
+                self.mapping2model[k] = pypika.Table(v)
 
     async def get_list_with_foreign_keys(self, info: QueryInfo):
         ret = await self.get_list(info)
 
         async def solve(ret_lst, main_table, fk_queries):
+            if fk_queries is None:
+                return
             pk_items = [x.id for x in ret_lst]
 
             for raw_name, query in fk_queries.items():
@@ -126,6 +133,7 @@ class SQLCrud:
 
     async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
         model = self.mapping2model[info.from_table]
+        await info.from_table.before_query(info)
 
         # 选择项
         q = Query()
@@ -235,7 +243,7 @@ class SQLCrud:
             ret.append(await self.execute_sql(i.get_sql()))
 
         if returning:
-            qi = QueryInfo(table, [getattr(table, x) for x in table.__dataclass_fields__.keys()], conditions=QueryConditions([
+            qi = QueryInfo(table, [getattr(table, x) for x in table.__annotations__.keys()], conditions=QueryConditions([
                 ConditionExpr(table.id, QUERY_OP_RELATION.IN, [x.lastrowid for x in ret]),
             ]))
             return await self.get_list(qi)
@@ -248,6 +256,7 @@ class SQLCrud:
 
 @dataclass
 class PeeweeCrud(SQLCrud):
+    permission: Any
     db: Any
 
     async def execute_sql(self, sql):

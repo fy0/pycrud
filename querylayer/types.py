@@ -1,9 +1,13 @@
-from typing import Dict, Optional, Any, Protocol, TypeVar, Set, Union, Literal
+from typing import Dict, Optional, Any, Protocol, TypeVar, Set, Union, Literal, List, TYPE_CHECKING
 
 from pydantic import BaseModel, create_model
 
 from querylayer.utils.cls_property import classproperty
 from querylayer.utils.name_helper import camel_case_to_underscore_case
+
+if TYPE_CHECKING:
+    from querylayer.query import QueryInfo
+    from querylayer.values import ValuesToWrite
 
 
 class RecordMappingField(str):
@@ -17,8 +21,8 @@ class RecordMappingBase:
 
     all_mappings = {}
 
+    __annotations__: Dict
     partial_model: 'BaseModel' = None
-    __dataclass_fields__: Dict
 
     @classproperty
     def name(cls):
@@ -31,13 +35,81 @@ class RecordMappingBase:
             f.table = cls
             setattr(cls, i, f)
 
-    @classmethod
-    def from_data(cls, data):
-        pass
-
     @property
     def fk_extra(self):
         return getattr(self, '$extra', None)
+
+    @classmethod
+    async def before_query(cls, info: 'QueryInfo'):
+        """
+        在发生查询时触发。
+        触发接口：get list set delete
+        :param info:
+        :return:
+        """
+        pass
+
+    async def after_read(self, records: List['RecordMappingBase']):
+        """
+        触发接口：get list new set
+        :param records:
+        :return:
+        """
+        pass
+
+    async def before_insert(self, values_lst: List['ValuesToWrite']):
+        """
+        插入操作之前
+        触发接口：new
+        :param values_lst:
+        :return:
+        """
+        pass
+
+    async def after_insert(self, values_lst: List['ValuesToWrite'], records: List['RecordMappingBase']):
+        """
+        插入操作之后
+        触发接口：new
+        :param values_lst:
+        :param records:
+        :return:
+        """
+        pass
+
+    async def before_update(self, values: 'ValuesToWrite', records: List['RecordMappingBase']):
+        """
+        触发接口：set
+        :param values:
+        :param records:
+        :return:
+        """
+        pass
+
+    async def after_update(self, values: 'ValuesToWrite', old_records: List['RecordMappingBase'],
+                           new_records: List['RecordMappingBase']):
+        """
+        触发接口：set
+        :param values:
+        :param old_records:
+        :param new_records:
+        :return:
+        """
+
+    async def before_delete(self, records: List['RecordMappingBase']):
+        """
+        触发接口：delete
+        :param records:
+        :return:
+        """
+        pass
+
+    async def after_delete(self, deleted_records: List['RecordMappingBase']):
+        """
+        触发接口：delete
+        :param deleted_records:
+        :return:
+        """
+        pass
 
 
 class RecordMapping(BaseModel, RecordMappingBase):

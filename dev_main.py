@@ -11,6 +11,7 @@ from querylayer.const import QUERY_OP_COMPARE
 from querylayer.crud import SQLCrud, PeeweeCrud
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr
 from querylayer.types import RecordMapping
+from querylayer.values import ValuesToWrite
 
 
 class User(RecordMapping):
@@ -145,8 +146,8 @@ async def main():
 
     # print(await c.update(q, {'username': '1'}))
     print('insert', await c.insert_many(User, [
-        {'name': 'c1', 'username': 'c1', 'nickname': 'c1', 'password': 'pass'},
-        {'name': 'c2', 'username': 'c2', 'nickname': 'c2', 'password': 'pass'},
+        ValuesToWrite(User, {'name': 'c1', 'username': 'c1', 'nickname': 'c1', 'password': 'pass'}),
+        ValuesToWrite(User, {'name': 'c2', 'username': 'c2', 'nickname': 'c2', 'password': 'pass'}),
     ], True))
 
     q = QueryInfo.parse_json(User, {
@@ -173,6 +174,8 @@ t2 = Topic.partial_model.parse_obj({
 })
 
 print(8888888, t2, t2.__fields_set__)
+for i in t2.__fields_set__:
+    print(i, getattr(t2, i))
 
 # t = Topic(1, '222', 3)
 # print(t, type(Topic))

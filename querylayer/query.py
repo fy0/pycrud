@@ -221,7 +221,7 @@ class QueryInfo:
 
         def parse_select(select_text, unselect_text):
             if select_text is None:
-                selected = get_items(table.__dataclass_fields__.keys())
+                selected = get_items(table.__annotations__.keys())
             else:
                 selected_columns = list(filter(lambda x: x, map(str.strip, select_text.split(','))))
                 selected = get_items(selected_columns)

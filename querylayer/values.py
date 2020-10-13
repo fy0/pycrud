@@ -1,4 +1,4 @@
-from typing import Mapping, TYPE_CHECKING
+from typing import Mapping, TYPE_CHECKING, Type
 
 from multidict import MultiDict
 
@@ -7,9 +7,9 @@ if TYPE_CHECKING:
 
 
 class ValuesToWrite(dict):
-    def __init__(self, raw_data=None, rm: 'RecordMapping' = None):
+    def __init__(self, table: Type['RecordMapping'], raw_data=None):
         super().__init__()
-        self.rm = rm
+        self.table = table
 
         # design of incr/desc:
         # 1. incr/desc/normal_set can't be appear in the same time
@@ -26,9 +26,10 @@ class ValuesToWrite(dict):
             self.parse(raw_data)
 
     def parse(self, post_data: Mapping):
-        self.clear()
         if isinstance(post_data, dict):
             post_data = MultiDict(post_data)
+
+        tmp = {}
 
         for k, v in post_data.items():
             # 提交多个相同值，等价于提交一个数组（用于formdata和urlencode形式）
@@ -54,4 +55,10 @@ class ValuesToWrite(dict):
                 # elif op == 'array_remove':
                 #    self.array_remove.add(k)
 
-            self[k] = v
+            tmp[k] = v
+
+        ret = self.table.partial_model.parse_obj(tmp)
+
+        self.clear()
+        for i in ret.__fields_set__:
+            self[i] = getattr(ret, i)
