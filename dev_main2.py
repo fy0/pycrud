@@ -1,8 +1,8 @@
+import asyncio
 from typing import Optional, Tuple
 
 import peewee
 from multidict import istr
-from pypika import Table
 
 from querylayer.crud import PeeweeCrud
 from querylayer.permission import A
@@ -78,7 +78,7 @@ class User(RecordMapping):
     test: int = 1
 
     @classmethod
-    async def before_query(cls, info: 'QueryInfo', user=None):
+    async def before_query(cls, info: 'QueryInfo', user=None, *, req=None):
         print(111, info)
 
 
@@ -90,9 +90,11 @@ class Topic(RecordMapping):
 
 
 permission = {
-    User: {
-        User.id: {A.READ},
-        Topic.id: {A.WRITE}
+    None: {
+        User: {
+            User.id: {A.READ},
+            Topic.id: {A.WRITE}
+        }
     }
 }
 
