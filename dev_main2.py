@@ -1,13 +1,14 @@
 import asyncio
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import Optional, Tuple, Dict, Any, Union, Literal, Set
 
 import peewee
 from multidict import istr
 
-from querylayer.crud import PeeweeCrud
-from querylayer.permission import A
+from querylayer.crud.sql_crud import PeeweeCrud
+from querylayer.permission import A, PermissionDesc
 from querylayer.query import QueryInfo
-from querylayer.types import RecordMapping
+from querylayer.types import RecordMapping, RecordMappingField
 from slim import Application
 from slim.base._view.base_view import BaseView
 from slim.base._view.request_view import RequestView
@@ -89,13 +90,26 @@ class Topic(RecordMapping):
     hello: Optional[str] = None
 
 
+@dataclass
+class Role:
+    match: Union[None, str]
+    permission_desc: PermissionDesc
+
+
+class TablePerm:
+    insert: bool = False
+    delete: bool = False
+
+
 permission = {
-    None: {
-        User: {
-            User.id: {A.READ},
-            Topic.id: {A.WRITE}
-        }
-    }
+    'visitor': Role(None, {
+        User: TablePerm(
+            False, False,
+            {
+                User.id: {A.WRITE},
+            }
+        )
+    })
 }
 
 

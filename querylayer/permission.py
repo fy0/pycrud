@@ -1,12 +1,12 @@
 import copy
 import logging
-from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence
+from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Literal, Type
 
 from schematics import Model
 from schematics.types import DictType
 
 if TYPE_CHECKING:
-    pass
+    from querylayer.types import RecordMappingField
 
 
 logger = logging.getLogger(__name__)
@@ -16,10 +16,11 @@ class A:
     QUERY = 'query'
     READ = 'read'
     WRITE = 'write'
-    CREATE = 'create'
-    DELETE = 'delete'
 
-    ALL = {QUERY, READ, WRITE, CREATE, DELETE}
+    ALL = {QUERY, READ, WRITE}
+
+
+PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]
 
 
 class AbilityTable:
@@ -47,7 +48,7 @@ class AbilityColumn:
     def __repr__(self):
         return '<Column %r.%r>' % (self.table, self.column)
 
-
+'''
 class Ability:
     def __init__(self, data: dict = None, *, based_on=None):
         """
@@ -314,3 +315,4 @@ class Permissions:
 
 ALL_PERMISSION = object()
 EMPTY_PERMISSION = object()
+'''
