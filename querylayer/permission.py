@@ -1,26 +1,106 @@
 import copy
 import logging
+from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Literal, Type
 
-from schematics import Model
-from schematics.types import DictType
-
 if TYPE_CHECKING:
-    from querylayer.types import RecordMappingField
-
+    from querylayer.types import RecordMappingField, RecordMapping
 
 logger = logging.getLogger(__name__)
 
 
-class A:
+class A(Enum):
     QUERY = 'query'
     READ = 'read'
     WRITE = 'write'
+    CREATE = 'create'
 
-    ALL = {QUERY, READ, WRITE}
+    ALL = {QUERY, READ, WRITE, CREATE}
 
 
-PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]
+# PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]
+PermissionDesc = Dict[Type['RecordMapping'], 'TablePerm']
+
+
+@dataclass
+class RolePerm:
+    permission_desc: PermissionDesc
+    based_on: 'RolePerm' = None
+    match: Union[None, str] = None
+
+    def __post_init__(self):
+        self.rebind()
+
+    def rebind(self):
+        self._ability_table: Dict[Type['RecordMapping'], Dict[A, Set['RecordMappingField']]] = {}
+        # self._table_type: Optional[Type['RecordMapping']] = None
+
+        if self.based_on:
+            self._ability_table = self.based_on._ability_table.copy()
+
+        def solve_data(table: Type['RecordMapping'], table_perm: TablePerm) -> Dict[str, Set[A]]:
+            """
+            整合默认值和叠加值，生成一份权限数据
+            :param table:
+            :param table_perm:
+            :return:
+            """
+            if not (table_perm.default_perm or table_perm.append_perm):
+                return table_perm.data
+
+            tmp = {}
+            # apply default
+            if table_perm.default_perm:
+                for i in table.record_fields.keys():
+                    tmp[i] = table_perm.default_perm
+
+            # apply current data
+            for k, v in table_perm.data.items():
+                tmp[k] = v
+
+            # apply append
+            if table_perm.append_perm:
+                for i in table.record_fields:
+                    if i in tmp:
+                        s = tmp[i].copy()
+                        s.update(table_perm.append_perm)
+                    else:
+                        s = table_perm.append_perm
+                    tmp[i] = s
+
+            return tmp
+
+        for k, v in self.permission_desc.items():
+            k: Type['RecordMapping']
+            v: TablePerm
+
+            table_columns_by_ability = self._ability_table.get(k, {})
+
+            for column, abilities in solve_data(k, v).items():
+                for a in abilities:
+                    table_columns_by_ability.setdefault(a, set())
+                    table_columns_by_ability[a].add(column)
+
+            self._ability_table[k] = table_columns_by_ability
+
+    def get_perm_avail(self, table: Type['RecordMapping'], ability: A) -> Set[Any]:
+        t = self._ability_table.get(table)
+        if t:
+            return t.get(ability)
+
+    def can_delete(self, table: Type['RecordMapping']) -> bool:
+        t = self.permission_desc.get(table)
+        return t.allow_delete if t else False
+
+
+@dataclass
+class TablePerm:
+    data: Dict[Union[Any, Literal['*', '|']], set]
+    default_perm: set = None
+    append_perm: set = None
+
+    allow_delete: bool = False
 
 
 class AbilityTable:

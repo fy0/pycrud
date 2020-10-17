@@ -5,8 +5,8 @@ from typing import Optional, Tuple, Dict, Any, Union, Literal, Set
 import peewee
 from multidict import istr
 
-from querylayer.crud.sql_crud import PeeweeCrud
-from querylayer.permission import A, PermissionDesc
+from querylayer.crud.ext.peewee_crud import PeeweeCrud
+from querylayer.permission import A, PermissionDesc, RolePerm, TablePerm
 from querylayer.query import QueryInfo
 from querylayer.types import RecordMapping, RecordMappingField
 from slim import Application
@@ -90,33 +90,23 @@ class Topic(RecordMapping):
     hello: Optional[str] = None
 
 
-@dataclass
-class Role:
-    match: Union[None, str]
-    permission_desc: PermissionDesc
-
-
-class TablePerm:
-    insert: bool = False
-    delete: bool = False
-
-
 permission = {
-    'visitor': Role(None, {
-        User: TablePerm(
-            False, False,
-            {
-                User.id: {A.WRITE},
-            }
-        )
+    'visitor': RolePerm({
+        User: TablePerm({
+            User.id: {A.WRITE},
+        })
+    }, match=None),
+
+    'user': RolePerm({
+
     })
 }
 
 
-c = PeeweeCrud({
+c = PeeweeCrud(permission, {
     User: 'users',
     Topic: 'topic',
-}, permission, db)
+}, db)
 
 
 class DataView(BaseView):

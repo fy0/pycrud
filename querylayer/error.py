@@ -1,15 +1,19 @@
 
-class DataLayerException(Exception):
+class QueryLayerException(Exception):
     pass
 
 
-class InvalidQueryConditionValue(DataLayerException):
+class PermissionException(QueryLayerException):
     pass
 
 
-class UnknownQueryOperator(DataLayerException):
+class InvalidQueryConditionValue(QueryLayerException):
     pass
 
 
-class UnsupportedQueryOperator(DataLayerException):
+class UnknownQueryOperator(QueryLayerException):
+    pass
+
+
+class UnsupportedQueryOperator(QueryLayerException):
     pass

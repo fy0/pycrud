@@ -98,7 +98,7 @@ class ConditionExpr:
     value: Union[RecordMappingField, Any]
 
     def __post_init__(self):
-        assert isinstance(self.column, RecordMappingField)
+        assert isinstance(self.column, RecordMappingField), 'RecordMappingField excepted, got %s' % type(self.column)
 
     @property
     def table_name(self):

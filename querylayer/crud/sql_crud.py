@@ -11,7 +11,7 @@ from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from querylayer.crud.base_crud import BaseCrud
 from querylayer.crud.query_result_row import QueryResultRow
 from querylayer.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
-from querylayer.types import RecordMapping, RecordMappingField
+from querylayer.types import RecordMapping, RecordMappingField, IDList
 from querylayer.values import ValuesToWrite
 
 _sql_method_map = {
@@ -42,11 +42,10 @@ class SQLCrud(BaseCrud):
             if isinstance(v, str):
                 self.mapping2model[k] = pypika.Table(v)
 
-    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite],
-                          returning=False, check_permission=True) -> Union[List[Any], List[QueryResultRow]]:
+    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite]) -> IDList:
         model = self.mapping2model[table]
-
         sql_lst = []
+
         for i in values_list:
             sql = Query().into(model).columns(*i.keys()).insert(*i.values())
             sql_lst.append(sql)
@@ -55,42 +54,38 @@ class SQLCrud(BaseCrud):
         for i in sql_lst:
             ret.append(await self.execute_sql(i.get_sql()))
 
-        if returning:
-            qi = QueryInfo(table, [getattr(table, x) for x in table.__annotations__.keys()], conditions=QueryConditions([
-                ConditionExpr(table.id, QUERY_OP_RELATION.IN, [x.lastrowid for x in ret]),
-            ]))
-            return await self.get_list(qi, check_permission=check_permission)
         return [x.lastrowid for x in ret]
 
-    async def update(self, info: QueryInfo, values: ValuesToWrite, returning=False, check_permission=True) ->\
-            Union[int, List[QueryResultRow]]:
+    async def update(self, info: QueryInfo, values: ValuesToWrite) -> IDList:
         model = self.mapping2model[info.from_table]
+
         qi = info.clone()
         qi.select = []
-        lst = await self.get_list(qi, check_permission=check_permission)
+        lst = await self.get_list(qi)
+        id_lst = [x.id for x in lst]
 
         # 选择项
-        sql = Query().update(model).where(model.id.isin([x.id for x in lst]))
+        sql = Query().update(model).where(model.id.isin(id_lst))
         for k, v in values.items():
             sql = sql.set(k, v)
 
         ret = await self.execute_sql(sql.get_sql())
-        if returning:
-            return await self.get_list(info, check_permission=check_permission)
-        return ret.rowcount
+        if ret.rowcount:
+            return id_lst
+        return []
 
-    async def delete(self, info: QueryInfo, check_permission=True) -> int:
+    async def delete(self, info: QueryInfo) -> int:
         model = self.mapping2model[info.from_table]
         qi = info.clone()
         qi.select = []
-        lst = await self.get_list(qi, check_permission=check_permission)
+        lst = await self.get_list(qi)
 
         # 选择项
         sql = Query().from_(model).delete().where(model.id.isin([x.id for x in lst]))
         ret = await self.execute_sql(sql.get_sql())
         return ret.rowcount
 
-    async def get_list(self, info: QueryInfo, check_permission=True) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
         model = self.mapping2model[info.from_table]
         await info.from_table.before_query(info)
 
@@ -165,11 +160,3 @@ class SQLCrud(BaseCrud):
     @abstractmethod
     async def execute_sql(self, sql):
         pass
-
-
-@dataclass
-class PeeweeCrud(SQLCrud):
-    db: Any
-
-    async def execute_sql(self, sql):
-        return self.db.execute_sql(sql)

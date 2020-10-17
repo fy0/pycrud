@@ -8,7 +8,8 @@ from pydantic.dataclasses import dataclass
 from pypika import Table
 
 from querylayer.const import QUERY_OP_COMPARE
-from querylayer.crud.sql_crud import SQLCrud, PeeweeCrud
+from querylayer.crud.sql_crud import SQLCrud
+from querylayer.crud.ext.peewee_crud import PeeweeCrud
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr
 from querylayer.types import RecordMapping
 from querylayer.values import ValuesToWrite

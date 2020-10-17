@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from querylayer.query import QueryInfo
     from querylayer.values import ValuesToWrite
 
+IDList = List[Any]
+
 
 class RecordMappingField(str):
     def __init__(self, _):
@@ -22,6 +24,7 @@ class RecordMappingBase:
     all_mappings = {}
 
     __annotations__: Dict
+    record_fields: Dict[str, RecordMappingField]
     partial_model: 'BaseModel' = None
 
     @classproperty
@@ -30,10 +33,13 @@ class RecordMappingBase:
 
     def __init_subclass__(cls, **kwargs):
         cls.all_mappings[camel_case_to_underscore_case(cls.__name__)] = cls
+        cls.record_fields = {}
+
         for i in cls.__annotations__:
             f = RecordMappingField(i)
             f.table = cls
             setattr(cls, i, f)
+            cls.record_fields[i] = f
 
     @property
     def fk_extra(self):
