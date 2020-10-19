@@ -1,6 +1,7 @@
-from typing import Dict, Optional, Any, Set, Union, Literal, List, TYPE_CHECKING
+from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING
 
 from pydantic import BaseModel, create_model
+from typing_extensions import Literal
 
 from querylayer.utils.cls_property import classproperty
 from querylayer.utils.name_helper import camel_case_to_underscore_case

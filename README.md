@@ -1,5 +1,7 @@
 # Query layer
 
+[![codecov](https://codecov.io/gh/fy0/querylayer/branch/master/graph/badge.svg)](https://codecov.io/gh/fy0/querylayer)
+
 A common crud framework for web.
 
 Features:
