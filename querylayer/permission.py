@@ -2,7 +2,9 @@ import copy
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Literal, Type
+from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Type
+
+from typing_extensions import Literal
 
 if TYPE_CHECKING:
     from querylayer.types import RecordMappingField, RecordMapping
