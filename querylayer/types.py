@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any, Protocol, TypeVar, Set, Union, Literal, List, TYPE_CHECKING
+from typing import Dict, Optional, Any, Set, Union, Literal, List, TYPE_CHECKING
 
 from pydantic import BaseModel, create_model
 
