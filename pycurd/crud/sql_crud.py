@@ -7,12 +7,12 @@ import pypika
 from pypika import Query
 from pypika.terms import ComplexCriterion
 
-from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from querylayer.crud.base_crud import BaseCrud
-from querylayer.crud.query_result_row import QueryResultRow
-from querylayer.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
-from querylayer.types import RecordMapping, RecordMappingField, IDList
-from querylayer.values import ValuesToWrite
+from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from pycurd.crud.base_crud import BaseCrud
+from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
+from pycurd.types import RecordMapping, RecordMappingField, IDList
+from pycurd.values import ValuesToWrite
 
 _sql_method_map = {
     # '+': '__pos__',

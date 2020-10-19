@@ -2,10 +2,10 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Type, Iterable, List
 
-from querylayer.crud.query_result_row import QueryResultRow
-from querylayer.query import QueryInfo
-from querylayer.types import RecordMapping, IDList
-from querylayer.values import ValuesToWrite
+from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.query import QueryInfo
+from pycurd.types import RecordMapping, IDList
+from pycurd.values import ValuesToWrite
 
 
 @dataclass

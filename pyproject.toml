@@ -1,8 +1,13 @@
 [tool.poetry]
-name = "querylayer"
+name = "pycurd"
 version = "0.1.0"
 description = ""
 authors = ["fy <fy0748@gmail.com>"]
+
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/fy0/pycurd"
+repository = "https://github.com/fy0/pycurd"
 
 [tool.poetry.dependencies]
 python = ">=3.6.9"

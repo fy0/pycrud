@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Union, Tuple, List, Type
 
-from querylayer.query import QueryInfo
-from querylayer.types import RecordMapping
-from querylayer.utils.name_helper import get_class_full_name
+from pycurd.query import QueryInfo
+from pycurd.types import RecordMapping
+from pycurd.utils.name_helper import get_class_full_name
 
 
 @dataclass

@@ -3,12 +3,12 @@ from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
-from querylayer.utils.cls_property import classproperty
-from querylayer.utils.name_helper import camel_case_to_underscore_case
+from pycurd.utils.cls_property import classproperty
+from pycurd.utils.name_helper import camel_case_to_underscore_case
 
 if TYPE_CHECKING:
-    from querylayer.query import QueryInfo
-    from querylayer.values import ValuesToWrite
+    from pycurd.query import QueryInfo
+    from pycurd.values import ValuesToWrite
 
 IDList = List[Any]
 

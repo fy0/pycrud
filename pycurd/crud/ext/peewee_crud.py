@@ -5,8 +5,8 @@ from typing import Any, Union, Dict, Type
 import peewee
 import pypika
 
-from querylayer.types import RecordMapping
-from querylayer.crud.sql_crud import SQLCrud
+from pycurd.types import RecordMapping
+from pycurd.crud.sql_crud import SQLCrud
 
 
 @dataclass

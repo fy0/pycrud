@@ -3,7 +3,7 @@ from typing import Mapping, TYPE_CHECKING, Type
 from multidict import MultiDict
 
 if TYPE_CHECKING:
-    from querylayer.types import RecordMapping
+    from pycurd.types import RecordMapping
 
 
 class ValuesToWrite(dict):

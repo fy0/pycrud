@@ -2,14 +2,14 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Dict, Union, List, Type, Iterable
 
-from querylayer.const import QUERY_OP_RELATION
-from querylayer.crud._core_crud import CoreCrud
-from querylayer.crud.query_result_row import QueryResultRow
-from querylayer.error import PermissionException
-from querylayer.permission import RoleDefine, A
-from querylayer.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
-from querylayer.types import RecordMapping, IDList, RecordMappingField
-from querylayer.values import ValuesToWrite
+from pycurd.const import QUERY_OP_RELATION
+from pycurd.crud._core_crud import CoreCrud
+from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.error import PermissionException
+from pycurd.permission import RoleDefine, A
+from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
+from pycurd.types import RecordMapping, IDList, RecordMappingField
+from pycurd.values import ValuesToWrite
 
 
 @dataclass

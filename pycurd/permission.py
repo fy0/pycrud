@@ -7,7 +7,7 @@ from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterabl
 from typing_extensions import Literal
 
 if TYPE_CHECKING:
-    from querylayer.types import RecordMappingField, RecordMapping
+    from pycurd.types import RecordMappingField, RecordMapping
 
 logger = logging.getLogger(__name__)
 
