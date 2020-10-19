@@ -25,4 +25,4 @@ jobs:
 
     - name: Test with pytest
       run: |
-        py.test --cov tests --ignore examples
+        py.test tests --cov --ignore examples
