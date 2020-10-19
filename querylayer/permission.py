@@ -24,9 +24,9 @@ PermissionDesc = Dict[Type['RecordMapping'], 'TablePerm']
 
 
 @dataclass
-class RolePerm:
+class RoleDefine:
     permission_desc: PermissionDesc
-    based_on: 'RolePerm' = None
+    based_on: 'RoleDefine' = None
     match: Union[None, str] = None
 
     def __post_init__(self):
@@ -87,7 +87,8 @@ class RolePerm:
     def get_perm_avail(self, table: Type['RecordMapping'], ability: A) -> Set[Any]:
         t = self._ability_table.get(table)
         if t:
-            return t.get(ability)
+            return t.get(ability, set())
+        return set()
 
     def can_delete(self, table: Type['RecordMapping']) -> bool:
         t = self.permission_desc.get(table)

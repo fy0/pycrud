@@ -17,7 +17,7 @@ class User(RecordMapping):
 
 
 def test_select_simple():
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         '$select': 'id, nickname, password',
         '$select-': ''
     })
@@ -25,12 +25,12 @@ def test_select_simple():
 
 
 def test_select_simple2():
-    q = QueryInfo.parse_json(User, {})
+    q = QueryInfo.from_json(User, {})
     assert q.select_for_curd == [User.id, User.nickname, User.username, User.password, User.test]
 
 
 def test_condition_simple():
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         'nickname.eq': 'test'
     })
     cond = q.conditions.items[0]
@@ -40,7 +40,7 @@ def test_condition_simple():
 
 
 def test_condition_simple2():
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         'nickname.eq': 'test',
         'test.lt': 5
     })
@@ -56,7 +56,7 @@ def test_condition_simple2():
 
 @pytest.mark.parametrize('key, op_name', [('and', 'and'), ('or', 'or'), ('and1', 'and'), ('or0', 'or'), ('or10001', 'or')])
 def test_condition_logic_1(key, op_name):
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         '$' + key: {
             'nickname.eq': 'test',
             'test.lt': 5
@@ -72,7 +72,7 @@ def test_condition_logic_1(key, op_name):
 
 
 def test_condition_logic_2():
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         '$and': {
             'nickname.eq': 'test',
             '$or': {
@@ -93,7 +93,7 @@ def test_condition_logic_2():
 
 @pytest.mark.parametrize('key', ['$oracle', '$Or', '$OR'])
 def test_condition_logic_failed_1(key):
-    q = QueryInfo.parse_json(User, {
+    q = QueryInfo.from_json(User, {
         '$' + key: {
             'nickname.eq': 'test',
             'test.lt': 5

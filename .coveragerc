@@ -1,0 +1,6 @@
+[report]
+exclude_lines =
+    pragma: no cover
+    @abstract
+    if TYPE_CHECKING:
+    raise NotImplemented

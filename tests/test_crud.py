@@ -3,28 +3,29 @@ from typing import Optional
 import peewee
 import pytest
 
-from querylayer.const import QUERY_OP_COMPARE
+from querylayer.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from querylayer.crud.ext.peewee_crud import PeeweeCrud
 from querylayer.crud.query_result_row import QueryResultRow
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr
 from querylayer.types import RecordMapping
+from querylayer.values import ValuesToWrite
 
 pytestmark = [pytest.mark.asyncio]
 
 
 class User(RecordMapping):
-    id: int
+    id: Optional[int]
     nickname: str
     username: str
-    password: str
-    test: int = 1
+    password: str = 'password'
 
 
 class Topic(RecordMapping):
-    id: int
+    id: Optional[int]
     title: str
     user_id: int
-    hello: Optional[str] = None
+    content: Optional[str] = None
+    time: int
 
 
 def crud_db_init():
@@ -35,14 +36,13 @@ def crud_db_init():
     db = connect("sqlite:///:memory:")
 
     class Users(peewee.Model):
-        name = peewee.CharField(index=True, max_length=255)
-        username = peewee.TextField()
+        username = peewee.TextField(index=True)
         nickname = peewee.TextField()
         password = peewee.TextField()
 
         class Meta:
             database = db
-            table_name = 'user'
+            table_name = 'users'
 
     class Topics(peewee.Model):
         title = peewee.CharField(index=True, max_length=255)
@@ -66,11 +66,11 @@ def crud_db_init():
     db.connect()
     db.create_tables([Users, Topics, Topics2], safe=True)
 
-    Users.create(name=1, username='test', nickname=2, password='pass')
-    Users.create(name=11, username='test2', nickname=2, password='pass')
-    Users.create(name=21, username='test3', nickname=2, password='pass')
-    Users.create(name=31, username='test4', nickname=2, password='pass')
-    Users.create(name=41, username='test5', nickname=2, password='pass')
+    Users.create(username='test', nickname=2, password='pass')
+    Users.create(username='test2', nickname=2, password='pass')
+    Users.create(username='test3', nickname=2, password='pass')
+    Users.create(username='test4', nickname=2, password='pass')
+    Users.create(username='test5', nickname=2, password='pass')
 
     Topics.create(title='test', time=1, content='content1', user_id=1)
     Topics.create(title='test2', time=1, content='content2', user_id=1)
@@ -109,19 +109,120 @@ async def test_curd_simple():
     assert len(ret) == 1
 
     info.foreign_keys = {
-        'topic': QueryInfo(Topic, [Topic.id, Topic.title], conditions=QueryConditions([
-            ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, 2),
+        'topic[]': QueryInfo(Topic, [Topic.id, Topic.title, Topic.user_id], conditions=QueryConditions([
+            ConditionExpr(Topic.user_id, QUERY_OP_RELATION.IN, [2, 3]),
+        ])),
+        'topic': QueryInfo(Topic, [Topic.id, Topic.title, Topic.user_id], conditions=QueryConditions([
+            ConditionExpr(Topic.user_id, QUERY_OP_RELATION.IN, [2, 3]),
         ]), foreign_keys={
             'user': QueryInfo(User, [User.id, User.nickname], conditions=QueryConditions([
                 ConditionExpr(Topic.user_id, QUERY_OP_COMPARE.EQ, User.id),
             ]))
         }),
     }
+
     ret = await c.get_list_with_foreign_keys(info)
-    print(222, ret)
-    assert False
+    assert ret[0].id == 2
+    d = ret[0].to_dict()
+
+    assert d['$extra']['topic']['id'] == 3
+    assert d['$extra']['topic']['title'] == 'test3'
+    assert d['$extra']['topic']['$extra']['user']
+    assert d['$extra']['topic']['$extra']['user']['id'] == 2
+
+    assert len(d['$extra']['topic[]']) == 2
 
 
-async def test_curd_write():
-    # db, Users, Topics, Topics2 = crud_db_init()
-    pass
+async def test_curd_read_2():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        User: MUsers,
+        Topic: MTopics,
+    }, db)
+
+    n0 = QueryInfo.from_json(Topic, {
+        'id.eq': 1
+    })
+    n = n0.clone()
+
+    ret = await c.get_list(n)
+    assert len(ret) == 1
+
+
+async def test_curd_and_or():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+    c = PeeweeCrud(None, {User: MUsers}, db)
+
+    info = QueryInfo.from_json(User, {
+        '$or': {
+            'id.in': [1, 2],
+            '$and': {
+                'id.ge': 4,
+                'id.le': 5
+            }
+        }
+    })
+
+    ret = await c.get_list(info)
+    assert [x.id for x in ret] == [1, 2, 4, 5]
+
+
+async def test_curd_write_success():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        User: MUsers,
+        Topic: MTopics,
+    }, db)
+
+    v = ValuesToWrite(Topic).parse({
+        'user_id': '444',
+        'content': 'welcome'
+    })
+
+    ret = await c.update(QueryInfo(Topic, []), v)
+    assert ret == [1, 2, 3, 4]
+
+    for i in MTopics.select():
+        assert i.content == 'welcome'
+
+
+async def test_curd_insert_success():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        User: MUsers,
+        Topic: MTopics,
+    }, db)
+
+    v = ValuesToWrite(Topic, {
+        'title': 'test',
+        'user_id': 1,
+        'content': 'insert1',
+        'time': 123
+    }, check_insert=True)
+
+    ret = await c.insert_many(Topic, [v])
+    assert ret == [5]
+
+    for i in MTopics.select().where(MTopics.id.in_(ret)):
+        assert i.content == 'insert1'
+
+
+async def test_curd_delete_success():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        User: MUsers,
+        Topic: MTopics,
+    }, db)
+
+    assert MTopics.select().where(MTopics.id == 1).count() == 1
+
+    ret = await c.delete(QueryInfo.from_json(Topic, {
+        'id.eq': 1
+    }))
+
+    assert len(ret) == 1
+    assert MTopics.select().where(MTopics.id == 1).count() == 0

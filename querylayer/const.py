@@ -28,7 +28,7 @@ class QUERY_OP_RELATION(Enum):
 QUERY_OP_FROM_TXT = {}
 
 for i in (QUERY_OP_COMPARE, QUERY_OP_RELATION):
-    for j in QUERY_OP_COMPARE:
+    for j in i:
         for opval in j.value:
             QUERY_OP_FROM_TXT[opval] = j
 
@@ -36,3 +36,14 @@ for i in (QUERY_OP_COMPARE, QUERY_OP_RELATION):
 class QUERY_OP(Enum, QUERY_OP_LOGIC, QUERY_OP_COMPARE, QUERY_OP_RELATION):
     pass
 '''
+
+if __name__ == '__main__':
+    def solve(e, t):
+        for k in e:
+            print('| %s | %s | %s |' % (t, k.name, k.value))
+
+    print('| type | operator | text |')
+    print('| ---- | -------- | ---- |')
+    solve(QUERY_OP_COMPARE, 'compare')
+    solve(QUERY_OP_RELATION, 'relation')
+    solve(QUERY_OP_LOGIC, 'logic')

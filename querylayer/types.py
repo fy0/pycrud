@@ -17,6 +17,9 @@ class RecordMappingField(str):
         self.table: Optional['RecordMapping'] = None
         super().__init__()
 
+    def __repr__(self):
+        return '%s.%s' % (self.table.table_name, str(self))
+
 
 class RecordMappingBase:
     id: Any
@@ -28,18 +31,23 @@ class RecordMappingBase:
     partial_model: 'BaseModel' = None
 
     @classproperty
-    def name(cls):
+    def table_name(cls):
         return camel_case_to_underscore_case(cls.__name__)
 
     def __init_subclass__(cls, **kwargs):
+        # 这块逻辑其实挺奇怪的 后面再说
+        if cls.__name__ == 'RecordMapping':
+            return
+
         cls.all_mappings[camel_case_to_underscore_case(cls.__name__)] = cls
         cls.record_fields = {}
 
         for i in cls.__annotations__:
-            f = RecordMappingField(i)
-            f.table = cls
-            setattr(cls, i, f)
-            cls.record_fields[i] = f
+            if i not in {'__annotations__', 'record_fields'}:
+                f = RecordMappingField(i)
+                f.table = cls
+                setattr(cls, i, f)
+                cls.record_fields[i] = f
 
     @property
     def fk_extra(self):

@@ -48,7 +48,7 @@ class SelectExpr:
 
     @property
     def table_name(self):
-        return self.column.table.name
+        return self.column.table.table_name
 
 
 @dataclass
@@ -102,7 +102,7 @@ class ConditionExpr:
 
     @property
     def table_name(self):
-        return self.column.table.name
+        return self.column.table.table_name
 
 
 @dataclass
@@ -205,17 +205,19 @@ class QueryInfo:
     select_hidden: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
 
     def clone(self):
-        return QueryInfo(*dataclasses.astuple(self))
+        # TODO: it's shallow copy
+        return dataclasses.replace(self)
+        # d = dataclasses.asdict(self)
+        # if 'conditions' in d:
+        #     d['conditions'] = QueryConditions(**d['conditions'])
+        # return QueryInfo(d)
 
     @property
     def select_for_curd(self):
         return self.select
 
-    def parse_query(self, data):
-        pass
-
     @classmethod
-    def parse_json(cls, table, data, from_http_query=False):
+    def from_json(cls, table, data, from_http_query=False):
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
 
@@ -296,4 +298,4 @@ class QueryInfo:
         return q
 
     def to_json(self):
-        return ''
+        raise NotImplemented

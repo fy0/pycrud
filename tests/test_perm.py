@@ -1,4 +1,4 @@
-from querylayer.permission import RolePerm, TablePerm, A
+from querylayer.permission import RoleDefine, TablePerm, A
 from querylayer.types import RecordMapping
 
 
@@ -6,7 +6,7 @@ def test_role_perm_simple():
     class User(RecordMapping):
         id: int
 
-    rp = RolePerm({
+    rp = RoleDefine({
         User: TablePerm({
             User.id: {A.WRITE},
         })
@@ -24,7 +24,7 @@ def test_role_perm_default_and_append():
     class Test(RecordMapping):
         pass
 
-    rp = RolePerm({
+    rp = RoleDefine({
         User: TablePerm({
             User.id: {A.WRITE},
             User.time: {A.READ}
@@ -39,7 +39,7 @@ def test_role_perm_default_and_append():
     assert rp._ability_table[User][A.QUERY] == {User.gender}
 
     assert rp.get_perm_avail(User, A.WRITE) == {User.id, User.time, User.gender}
-    assert rp.get_perm_avail(Test, A.WRITE) is None
+    assert rp.get_perm_avail(Test, A.WRITE) == set()
 
 
 def test_role_perm_based_on():
@@ -48,7 +48,7 @@ def test_role_perm_based_on():
         time: int
         gender: str
 
-    rp0 = RolePerm({
+    rp0 = RoleDefine({
         User: TablePerm({
             User.id: {A.WRITE},
             User.time: {A.READ}
@@ -58,7 +58,7 @@ def test_role_perm_based_on():
         )
     })
 
-    rp = RolePerm({
+    rp = RoleDefine({
         User: TablePerm({
             User.id: {A.READ},
             User.time: {A.READ}

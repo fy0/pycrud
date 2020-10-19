@@ -6,17 +6,17 @@ from querylayer.const import QUERY_OP_RELATION
 from querylayer.crud._core_crud import CoreCrud
 from querylayer.crud.query_result_row import QueryResultRow
 from querylayer.error import PermissionException
-from querylayer.permission import RolePerm, A
+from querylayer.permission import RoleDefine, A
 from querylayer.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
 from querylayer.types import RecordMapping, IDList, RecordMappingField
 from querylayer.values import ValuesToWrite
 
 
 @dataclass
-class PermInfoForCrud:
+class PermInfo:
     is_check: bool
     user: Any
-    role: 'RolePerm'
+    role: 'RoleDefine'
 
 
 @dataclass
@@ -24,7 +24,7 @@ class BaseCrud(CoreCrud, ABC):
     permission: Any
 
     async def solve_returning(self, table: Type[RecordMapping], id_lst: IDList, info: QueryInfo = None,
-                              perm: PermInfoForCrud = None):
+                              perm: PermInfo = None):
         if info:
             selects = info.select_for_curd
         else:
@@ -40,13 +40,15 @@ class BaseCrud(CoreCrud, ABC):
             return await self.get_list(qi)
 
     @staticmethod
-    async def _solve_query(info: QueryInfo, perm: PermInfoForCrud):
+    async def _solve_query(info: QueryInfo, perm: PermInfo):
         if perm.is_check:
             allow_query = perm.role.get_perm_avail(info.from_table, A.QUERY)
             allow_read = perm.role.get_perm_avail(info.from_table, A.READ)
 
             def sub_solve_items(items):
-                return [solve_condition(x) for x in items if x is not None]
+                if items:
+                    return [solve_condition(x) for x in items if x is not None]
+                return []
 
             def solve_condition(c):
                 if isinstance(c, QueryConditions):
@@ -78,14 +80,15 @@ class BaseCrud(CoreCrud, ABC):
         return info
 
     async def insert_many_with_perm(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite],
-                                    returning=False, *, perm: PermInfoForCrud) -> Union[IDList, List[QueryResultRow]]:
+                                    returning=False, *, perm: PermInfo) -> Union[IDList, List[QueryResultRow]]:
         if perm.is_check:
             values_list_new = []
             avail = perm.role.get_perm_avail(table, A.CREATE)
 
             for i in values_list:
                 data = {k: v for k, v in i.items() if k in avail}
-                values_list_new.append(data)
+                if data:
+                    values_list_new.append(data)
         else:
             values_list_new = values_list
 
@@ -97,7 +100,7 @@ class BaseCrud(CoreCrud, ABC):
         return lst
 
     async def update_with_perm(self, info: QueryInfo, values: ValuesToWrite, returning=False,
-                               *, perm: PermInfoForCrud) -> Union[List[Any], List[QueryResultRow]]:
+                               *, perm: PermInfo) -> Union[List[Any], List[QueryResultRow]]:
         if perm.is_check:
             avail = perm.role.get_perm_avail(info.from_table, A.WRITE)
             data = {k: v for k, v in values.items() if k in avail}
@@ -112,7 +115,7 @@ class BaseCrud(CoreCrud, ABC):
 
         return lst
 
-    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfoForCrud) -> int:
+    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfo) -> int:
         if perm.is_check:
             if not perm.role.can_delete(info.from_table):
                 raise PermissionException('delete', info.from_table)
@@ -120,20 +123,24 @@ class BaseCrud(CoreCrud, ABC):
         info = await self._solve_query(info, perm)
         return await self.delete(info)
 
-    async def get_list_with_perm(self, info: QueryInfo, *, perm: PermInfoForCrud) -> List[QueryResultRow]:
+    async def get_list_with_perm(self, info: QueryInfo, *, perm: PermInfo) -> List[QueryResultRow]:
         info = await self._solve_query(info, perm)
         return await self.get_list(info)
 
-    async def get_list_with_foreign_keys(self, info: QueryInfo, perm: PermInfoForCrud = None):
+    async def get_list_with_foreign_keys(self, info: QueryInfo, perm: PermInfo = None):
         if perm is None:
-            perm = PermInfoForCrud(False, None, None)
+            perm = PermInfo(False, None, None)
 
         ret = await self.get_list_with_perm(info, perm=perm)
 
-        async def solve(ret_lst, main_table, fk_queries):
+        async def solve(ret_lst, main_table, fk_queries, depth=0):
             if fk_queries is None:
                 return
-            pk_items = [x.id for x in ret_lst]
+
+            if depth == 0:
+                pk_items = [x.id for x in ret_lst]
+            else:
+                pk_items = [x.raw_data[0] for x in ret_lst]
 
             for raw_name, query in fk_queries.items():
                 query: QueryInfo
@@ -141,7 +148,7 @@ class BaseCrud(CoreCrud, ABC):
 
                 # 上级ID，数据，查询条件
                 q = QueryInfo(main_table, [query.from_table.id, *query.select])
-                q.conditions = QueryConditions([ConditionExpr(info.from_table.id, QUERY_OP_RELATION.IN, pk_items)])
+                q.conditions = QueryConditions([ConditionExpr(main_table.id, QUERY_OP_RELATION.IN, pk_items)])
                 q.join = [QueryJoinInfo(query.from_table, query.conditions, limit=limit)]
 
                 elist = []
@@ -159,11 +166,15 @@ class BaseCrud(CoreCrud, ABC):
                     for x in elist:
                         extra[x.id] = x
 
-                for i in ret_lst:
-                    i.extra[raw_name] = extra.get(i.id)
+                if depth == 0:
+                    for i in ret_lst:
+                        i.extra[raw_name] = extra.get(i.id)
+                else:
+                    for i in ret_lst:
+                        i.extra[raw_name] = extra.get(i.raw_data[0])
 
                 if query.foreign_keys:
-                    await solve(elist, query.from_table, query.foreign_keys)
+                    await solve(elist, query.from_table, query.foreign_keys, depth+1)
 
         await solve(ret, info.from_table, info.foreign_keys)
         return ret

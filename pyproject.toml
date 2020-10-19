@@ -8,6 +8,7 @@ authors = ["fy <fy0748@gmail.com>"]
 python = ">=3.6.9"
 PyPika = "^0.42.1"
 typing-extensions = ">=3.7.4"
+pydantic = "^1.6.1"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=5.2"

@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class ValuesToWrite(dict):
-    def __init__(self, table: Type['RecordMapping'], raw_data=None):
+    def __init__(self, table: Type['RecordMapping'], raw_data=None, check_insert=False):
         super().__init__()
         self.table = table
 
@@ -23,9 +23,9 @@ class ValuesToWrite(dict):
 
         if raw_data:
             assert isinstance(raw_data, Mapping)
-            self.parse(raw_data)
+            self.parse(raw_data, check_insert=check_insert)
 
-    def parse(self, post_data: Mapping):
+    def parse(self, post_data: Mapping, check_insert=False):
         if isinstance(post_data, dict):
             post_data = MultiDict(post_data)
 
@@ -57,8 +57,17 @@ class ValuesToWrite(dict):
 
             tmp[k] = v
 
-        ret = self.table.partial_model.parse_obj(tmp)
+        if check_insert:
+            ret = self.table.parse_obj(tmp)
 
-        self.clear()
-        for i in ret.__fields_set__:
-            self[i] = getattr(ret, i)
+            self.clear()
+            for i in ret.__fields__:
+                self[i] = getattr(ret, i)
+        else:
+            ret = self.table.partial_model.parse_obj(tmp)
+
+            self.clear()
+            for i in ret.__fields_set__:
+                self[i] = getattr(ret, i)
+
+        return self

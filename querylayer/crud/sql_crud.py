@@ -74,16 +74,17 @@ class SQLCrud(BaseCrud):
             return id_lst
         return []
 
-    async def delete(self, info: QueryInfo) -> int:
+    async def delete(self, info: QueryInfo) -> IDList:
         model = self.mapping2model[info.from_table]
         qi = info.clone()
         qi.select = []
         lst = await self.get_list(qi)
 
         # 选择项
-        sql = Query().from_(model).delete().where(model.id.isin([x.id for x in lst]))
-        ret = await self.execute_sql(sql.get_sql())
-        return ret.rowcount
+        id_lst = [x.id for x in lst]
+        sql = Query().from_(model).delete().where(model.id.isin(id_lst))
+        await self.execute_sql(sql.get_sql())
+        return id_lst
 
     async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
         model = self.mapping2model[info.from_table]
