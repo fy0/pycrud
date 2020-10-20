@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pycurd"
-version = "0.1.0"
-description = ""
+version = "0.1.1"
+description = "A common crud framework for web."
 authors = ["fy <fy0748@gmail.com>"]
 
 license = "MIT"
@@ -11,10 +11,10 @@ repository = "https://github.com/fy0/pycurd"
 
 [tool.poetry.dependencies]
 python = ">=3.6.9"
-PyPika = "^0.42.1"
-typing-extensions = ">=3.7.4"
-pydantic = "^1.6.1"
-multidict = "^5.0.0"
+PyPika = ">=0.42.1"
+typing_extensions = ">=3.6.5"
+pydantic = ">=1.6.1"
+multidict = ">=4.5,<6.0"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=5.2"
