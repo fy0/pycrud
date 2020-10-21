@@ -111,7 +111,7 @@ class AbilityTable:
         self.table = name
 
     def __eq__(self, other):
-        return self.table == other.table
+        return self.table == other.model
 
     def __repr__(self):
         return '<Table %r>' % self.table
@@ -123,10 +123,10 @@ class AbilityColumn:
         self.column = column
 
     def __eq__(self, other):
-        return self.table == other.table and self.column == other.column
+        return self.table == other.model and self.column == other.column
 
     def __ne__(self, other):
-        return self.table != other.table or self.column != other.column
+        return self.table != other.model or self.column != other.column
 
     def __repr__(self):
         return '<Column %r.%r>' % (self.table, self.column)

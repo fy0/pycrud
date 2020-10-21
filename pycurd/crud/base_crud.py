@@ -144,7 +144,7 @@ class BaseCrud(CoreCrud, ABC):
 
             for raw_name, query in fk_queries.items():
                 query: QueryInfo
-                limit = 0 if raw_name.endswith('[]') else 1
+                limit = -1 if raw_name.endswith('[]') else 1
 
                 # 上级ID，数据，查询条件
                 q = QueryInfo(main_table, [query.from_table.id, *query.select])

@@ -136,7 +136,7 @@ class SQLCrud(BaseCrud):
                     jtable = self.mapping2model[ji.table]
                     where = solve_condition(ji.conditions)
 
-                    if ji.limit == 0:
+                    if ji.limit == -1:
                         q = q.inner_join(jtable).on(where)
                     else:
                         q = q.inner_join(jtable).on(
@@ -146,7 +146,8 @@ class SQLCrud(BaseCrud):
         # 一些限制
         if info.order_by:
             q = q.orderby(info.order_by)
-        q = q.limit(info.limit)
+        if info.limit != -1:
+            q = q.limit(info.limit)
         q = q.offset(info.offset)
 
         # 查询结果

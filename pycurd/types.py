@@ -27,7 +27,6 @@ class RecordMappingBase:
 
     all_mappings = {}
 
-    __annotations__: Dict
     record_fields: Dict[str, RecordMappingField]
     partial_model: 'BaseModel' = None
 
@@ -172,4 +171,5 @@ class RecordMapping(BaseModel, RecordMappingBase):
         if cls.__name__.startswith('*partial_'):
             return
 
+        assert cls.record_fields.get('id'), 'id must be defined for %s' % cls
         cls.partial_model = cls.to_partial()

@@ -125,7 +125,7 @@ class QueryJoinInfo:
     table: Type[RecordMapping]
     conditions: QueryConditions
     type: Union[Literal['inner', 'left']] = 'left'
-    limit: int = 0  # unlimited
+    limit: int = -1  # unlimited
 
 
 @dataclass
@@ -218,12 +218,13 @@ class QueryInfo:
 
     @classmethod
     def from_json(cls, table, data, from_http_query=False):
+        assert table, 'table must be exists'
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
 
         def parse_select(select_text, unselect_text):
             if select_text is None:
-                selected = get_items(table.__annotations__.keys())
+                selected = get_items(table.record_fields.keys())
             else:
                 selected_columns = list(filter(lambda x: x, map(str.strip, select_text.split(','))))
                 selected = get_items(selected_columns)
