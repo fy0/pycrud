@@ -1,14 +1,16 @@
-from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING
+from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable
 
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
+from pycurd.crud.query_result_row import QueryResultRow
 from pycurd.utils.cls_property import classproperty
 from pycurd.utils.name_helper import camel_case_to_underscore_case
 
 if TYPE_CHECKING:
     from pycurd.query import QueryInfo
     from pycurd.values import ValuesToWrite
+    from pycurd.crud.base_crud import PermInfo
 
 IDList = List[Any]
 
@@ -23,6 +25,9 @@ class RecordMappingField(str):
 
 
 class RecordMappingBase:
+    """
+    before 和 after 的参数的大方向设计原则是，如果在这一callback中对参数进行修改，可以影响后续行为，则保留
+    """
     id: Any
 
     all_mappings = {}
@@ -54,75 +59,61 @@ class RecordMappingBase:
         return getattr(self, '$extra', None)
 
     @classmethod
-    async def before_query(cls, info: 'QueryInfo'):
+    async def on_query(cls, info: 'QueryInfo', perm: 'PermInfo' = None):
         """
         在发生查询时触发。
         触发接口：get list set delete
         :param info:
+        :param perm:
         :return:
         """
         pass
 
-    async def after_read(self, records: List['RecordMappingBase']):
+    @classmethod
+    async def on_read(cls,
+                      info: 'QueryInfo',
+                      when_complete: List[Callable[[List[QueryResultRow]], Awaitable]],
+                      perm: 'PermInfo' = None):
         """
-        触发接口：get list new set
-        :param records:
+        触发接口：list insert(with returning) update(with returning)
+        :param info:
+        :param when_complete:
+        :param perm:
         :return:
         """
         pass
 
-    async def before_insert(self, values_lst: List['ValuesToWrite']):
-        """
-        插入操作之前
-        触发接口：new
-        :param values_lst:
-        :return:
-        """
+    @classmethod
+    async def on_insert(cls,
+                        values_lst: List['ValuesToWrite'],
+                        when_complete: List[Callable[[IDList], Awaitable]],
+                        perm: 'PermInfo' = None):
         pass
 
-    async def after_insert(self, values_lst: List['ValuesToWrite'], records: List['RecordMappingBase']):
+    @classmethod
+    async def on_update(cls,
+                        info: 'QueryInfo',
+                        values: 'ValuesToWrite',
+                        when_before_update: List[Callable[[IDList], Awaitable]],
+                        when_complete: List[Callable[[], Awaitable]],
+                        perm: 'PermInfo' = None):
         """
-        插入操作之后
-        触发接口：new
-        :param values_lst:
-        :param records:
-        :return:
-        """
-        pass
-
-    async def before_update(self, values: 'ValuesToWrite', records: List['RecordMappingBase']):
-        """
-        触发接口：set
+        触发接口：update
+        :param info:
         :param values:
-        :param records:
+        :param perm:
+        :param when_before_update:
+        :param when_complete:
         :return:
         """
         pass
 
-    async def after_update(self, values: 'ValuesToWrite', old_records: List['RecordMappingBase'],
-                           new_records: List['RecordMappingBase']):
-        """
-        触发接口：set
-        :param values:
-        :param old_records:
-        :param new_records:
-        :return:
-        """
-
-    async def before_delete(self, records: List['RecordMappingBase']):
-        """
-        触发接口：delete
-        :param records:
-        :return:
-        """
-        pass
-
-    async def after_delete(self, deleted_records: List['RecordMappingBase']):
-        """
-        触发接口：delete
-        :param deleted_records:
-        :return:
-        """
+    @classmethod
+    async def on_delete(cls,
+                        info: 'QueryInfo',
+                        when_before_delete: List[Callable[[IDList], Awaitable]],
+                        when_complete: List[Callable[[], Awaitable]],
+                        perm: 'PermInfo' = None):
         pass
 
 

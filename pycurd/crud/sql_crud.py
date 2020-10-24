@@ -42,7 +42,10 @@ class SQLCrud(BaseCrud):
             if isinstance(v, str):
                 self.mapping2model[k] = pypika.Table(v)
 
-    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite]) -> IDList:
+    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], *, _perm=None) -> IDList:
+        when_complete = []
+        await table.on_insert(values_list, when_complete, _perm)
+
         model = self.mapping2model[table]
         sql_lst = []
 
@@ -54,41 +57,68 @@ class SQLCrud(BaseCrud):
         for i in sql_lst:
             ret.append(await self.execute_sql(i.get_sql()))
 
-        return [x.lastrowid for x in ret]
+        id_lst = [x.lastrowid for x in ret]
+        for i in when_complete:
+            await i(id_lst)
 
-    async def update(self, info: QueryInfo, values: ValuesToWrite) -> IDList:
+        return id_lst
+
+    async def update(self, info: QueryInfo, values: ValuesToWrite, *, _perm=None) -> IDList:
+        # hook
+        await info.from_table.on_query(info)
+        when_before_update, when_complete = [], []
+        await info.from_table.on_update(info, values, when_before_update, when_complete, _perm)
+
         model = self.mapping2model[info.from_table]
-
         qi = info.clone()
         qi.select = []
         lst = await self.get_list(qi)
         id_lst = [x.id for x in lst]
+
+        for i in when_before_update:
+            await i(id_lst)
 
         # 选择项
         sql = Query().update(model).where(model.id.isin(id_lst))
         for k, v in values.items():
             sql = sql.set(k, v)
 
-        ret = await self.execute_sql(sql.get_sql())
-        if ret.rowcount:
-            return id_lst
-        return []
+        await self.execute_sql(sql.get_sql())
+        for i in when_complete:
+            await i()
 
-    async def delete(self, info: QueryInfo) -> IDList:
+        return id_lst
+
+    async def delete(self, info: QueryInfo, *, _perm=None) -> IDList:
         model = self.mapping2model[info.from_table]
+        when_before_delete, when_complete = [], []
+        await info.from_table.on_delete(info, when_before_delete, when_complete, _perm)
+
         qi = info.clone()
         qi.select = []
         lst = await self.get_list(qi)
 
         # 选择项
         id_lst = [x.id for x in lst]
+
+        for i in when_before_delete:
+            await i(id_lst)
+
         sql = Query().from_(model).delete().where(model.id.isin(id_lst))
         await self.execute_sql(sql.get_sql())
+
+        for i in when_complete:
+            await i()
+
         return id_lst
 
-    async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, *, _perm=None) -> List[QueryResultRow]:
+        # hook
+        await info.from_table.on_query(info)
+        when_complete = []
+        await info.from_table.on_read(info, when_complete, _perm)
+
         model = self.mapping2model[info.from_table]
-        await info.from_table.before_query(info)
 
         # 选择项
         q = Query()
@@ -156,6 +186,9 @@ class SQLCrud(BaseCrud):
 
         for i in cursor:
             ret.append(QueryResultRow(i[0], i[1:], info, info.from_table))
+
+        for i in when_complete:
+            await i(ret)
 
         return ret
 

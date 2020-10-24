@@ -1,18 +1,20 @@
 from dataclasses import dataclass, field
-from typing import Any, Union, Tuple, List, Type
+from typing import Any, Union, Tuple, List, Type, TYPE_CHECKING
 
-from pycurd.query import QueryInfo
-from pycurd.types import RecordMapping
 from pycurd.utils.name_helper import get_class_full_name
+
+if TYPE_CHECKING:
+    from pycurd.query import QueryInfo
+    from pycurd.types import RecordMapping
 
 
 @dataclass
 class QueryResultRow:
     id: Any
     raw_data: Union[Tuple, List]
-    info: QueryInfo
+    info: 'QueryInfo'
 
-    base: Type[RecordMapping]
+    base: Type['RecordMapping']
     extra: Any = field(default_factory=lambda: {})
 
     def to_dict(self):

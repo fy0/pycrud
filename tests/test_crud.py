@@ -176,10 +176,10 @@ async def test_curd_write_success():
         Topic: MTopics,
     }, db)
 
-    v = ValuesToWrite(Topic).parse({
+    v = ValuesToWrite({
         'user_id': '444',
         'content': 'welcome'
-    })
+    }, Topic).bind()
 
     ret = await c.update(QueryInfo(Topic, []), v)
     assert ret == [1, 2, 3, 4]
@@ -196,12 +196,13 @@ async def test_curd_insert_success():
         Topic: MTopics,
     }, db)
 
-    v = ValuesToWrite(Topic, {
+    v = ValuesToWrite({
         'title': 'test',
         'user_id': 1,
         'content': 'insert1',
         'time': 123
-    }, check_insert=True)
+    }, Topic)
+    v.bind(True)
 
     ret = await c.insert_many(Topic, [v])
     assert ret == [5]

@@ -22,7 +22,7 @@ def test_role_perm_default_and_append():
         gender: str
 
     class Test(RecordMapping):
-        pass
+        id: str
 
     rp = RoleDefine({
         User: TablePerm({

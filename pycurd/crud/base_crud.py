@@ -2,6 +2,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Dict, Union, List, Type, Iterable
 
+import pydantic
+
 from pycurd.const import QUERY_OP_RELATION
 from pycurd.crud._core_crud import CoreCrud
 from pycurd.crud.query_result_row import QueryResultRow
@@ -37,7 +39,7 @@ class BaseCrud(CoreCrud, ABC):
         if perm:
             return await self.get_list_with_perm(qi, perm=perm)
         else:
-            return await self.get_list(qi)
+            return await self.get_list(qi, _perm=perm)
 
     @staticmethod
     async def _solve_query(info: QueryInfo, perm: PermInfo):
@@ -81,18 +83,25 @@ class BaseCrud(CoreCrud, ABC):
 
     async def insert_many_with_perm(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite],
                                     returning=False, *, perm: PermInfo) -> Union[IDList, List[QueryResultRow]]:
+        values_list_new = []
+
         if perm.is_check:
-            values_list_new = []
             avail = perm.role.get_perm_avail(table, A.CREATE)
 
-            for i in values_list:
-                data = {k: v for k, v in i.items() if k in avail}
-                if data:
-                    values_list_new.append(data)
-        else:
-            values_list_new = values_list
+        for i in values_list:
+            if perm.is_check:
+                for j in (i.keys() - avail):
+                    del i[j]
 
-        lst = await self.insert_many(table, values_list_new)
+            try:
+                i.bind(True, table=table)
+                if i:
+                    values_list_new.append(i)
+            except pydantic.ValidationError:
+                # TODO: 权限检查之后过不了检验的后面再处置
+                pass
+
+        lst = await self.insert_many(table, values_list_new, _perm=perm)
 
         if returning:
             return await self.solve_returning(table, lst, perm=perm)
@@ -103,12 +112,22 @@ class BaseCrud(CoreCrud, ABC):
                                *, perm: PermInfo) -> Union[List[Any], List[QueryResultRow]]:
         if perm.is_check:
             avail = perm.role.get_perm_avail(info.from_table, A.WRITE)
-            data = {k: v for k, v in values.items() if k in avail}
-        else:
-            data = values
+
+            for j in (values.keys() - avail):
+                del values[j]
+
+        try:
+            values.bind(True, table=info.from_table)
+        except pydantic.ValidationError:
+            # TODO: 权限检查之后过不了检验的后面再处置
+            pass
+
+
+        if not values:
+            return []
 
         info = await self._solve_query(info, perm)
-        lst = await self.update(info, data)
+        lst = await self.update(info, values, _perm=perm)
 
         if returning:
             return await self.solve_returning(info.from_table, lst, info, perm=perm)
@@ -121,11 +140,11 @@ class BaseCrud(CoreCrud, ABC):
                 raise PermissionException('delete', info.from_table)
 
         info = await self._solve_query(info, perm)
-        return await self.delete(info)
+        return await self.delete(info, _perm=perm)
 
     async def get_list_with_perm(self, info: QueryInfo, *, perm: PermInfo) -> List[QueryResultRow]:
         info = await self._solve_query(info, perm)
-        return await self.get_list(info)
+        return await self.get_list(info, _perm=perm)
 
     async def get_list_with_foreign_keys(self, info: QueryInfo, perm: PermInfo = None):
         if perm is None:

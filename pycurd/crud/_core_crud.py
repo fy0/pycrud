@@ -11,17 +11,17 @@ from pycurd.values import ValuesToWrite
 @dataclass
 class CoreCrud:
     @abstractmethod
-    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite]) -> IDList:
+    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], *, _perm=None) -> IDList:
         pass
 
     @abstractmethod
-    async def update(self, info: QueryInfo, values: ValuesToWrite) -> IDList:
+    async def update(self, info: QueryInfo, values: ValuesToWrite, *, _perm=None) -> IDList:
         pass
 
     @abstractmethod
-    async def delete(self, info: QueryInfo) -> int:
+    async def delete(self, info: QueryInfo, *, _perm=None) -> int:
         pass
 
     @abstractmethod
-    async def get_list(self, info: QueryInfo) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, *, _perm=None) -> List[QueryResultRow]:
         pass

@@ -1,4 +1,4 @@
-from typing import Mapping, TYPE_CHECKING, Type
+from typing import Mapping, TYPE_CHECKING, Type, Dict
 
 from multidict import MultiDict
 
@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class ValuesToWrite(dict):
-    def __init__(self, table: Type['RecordMapping'], raw_data=None, check_insert=False):
+    def __init__(self, raw_data=None, table: Type['RecordMapping'] = None, try_parse=False):
         super().__init__()
         self.table = table
 
@@ -23,20 +23,46 @@ class ValuesToWrite(dict):
 
         if raw_data:
             assert isinstance(raw_data, Mapping)
-            self.parse(raw_data, check_insert=check_insert)
 
-    def parse(self, post_data: Mapping, check_insert=False):
-        if isinstance(post_data, dict):
-            post_data = MultiDict(post_data)
+        self.clear()
+        self.update(self._dict_convert(raw_data))
 
-        tmp = {}
+        if try_parse:
+            self.try_bind()
 
-        for k, v in post_data.items():
-            # 提交多个相同值，等价于提交一个数组（用于formdata和urlencode形式）
-            v_all = post_data.getall(k)
-            if len(v_all) > 1:
-                v = v_all
+    def _dict_convert(self, data) -> Dict:
+        if isinstance(data, dict):
+            return data
 
+        elif isinstance(data, MultiDict):
+            data = MultiDict(data)
+            tmp = {}
+
+            for k, v in data.items():
+                # 提交多个相同值，等价于提交一个数组（用于formdata和urlencode形式）
+                v_all = data.getall(k)
+                if len(v_all) > 1:
+                    v = v_all
+                tmp[k] = v
+
+            return tmp
+        else:
+            return dict(data)
+
+    def try_bind(self, table=None):
+        table = table or self.table
+        ret = table.partial_model.parse_obj(self)
+
+        for i in ret.__fields_set__:
+            self[i] = getattr(ret, i)
+
+        return self
+
+    def bind(self, check_insert=False, table=None):
+        table = table or self.table
+        final = {}
+
+        for k, v in self.items():
             if k.startswith('$'):
                 continue
             elif '.' in k:
@@ -55,19 +81,15 @@ class ValuesToWrite(dict):
                 # elif op == 'array_remove':
                 #    self.array_remove.add(k)
 
-            tmp[k] = v
+            final[k] = v
 
         if check_insert:
-            ret = self.table.parse_obj(tmp)
-
+            ret = table.parse_obj(final)
             self.clear()
-            for i in ret.__fields__:
-                self[i] = getattr(ret, i)
+            self.update(ret.dict(skip_defaults=False, exclude_none=True))
         else:
-            ret = self.table.partial_model.parse_obj(tmp)
-
+            ret = table.partial_model.parse_obj(final)
             self.clear()
-            for i in ret.__fields_set__:
-                self[i] = getattr(ret, i)
+            self.update(ret.dict(include=ret.__fields_set__))
 
         return self

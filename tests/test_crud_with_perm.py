@@ -95,7 +95,7 @@ async def test_curd_perm_write():
     # perm visitor
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite(User).parse({'nickname': 'aaa'}),
+        ValuesToWrite({'nickname': 'aaa'}, User).bind(),
         perm=PermInfo(True, None, permission['visitor'])
     )
     assert len(ret) == 0  # all filtered
@@ -103,7 +103,7 @@ async def test_curd_perm_write():
     # not check
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite(User).parse({'nickname': 'aaa'}),
+        ValuesToWrite({'nickname': 'aaa'}, User).bind(),
         perm=PermInfo(False, None, permission['visitor'])
     )
     assert len(ret) == 1
@@ -112,7 +112,7 @@ async def test_curd_perm_write():
     # perm user
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite(User).parse({'nickname': 'ccc'}),
+        ValuesToWrite({'nickname': 'ccc'}, User).bind(),
         perm=PermInfo(True, None, permission['user'])
     )
     assert len(ret) == 1
@@ -121,7 +121,7 @@ async def test_curd_perm_write():
     # returning
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite(User).parse({'nickname': 'ccc'}),
+        ValuesToWrite({'nickname': 'ccc'}, User).bind(),
         perm=PermInfo(True, None, permission['user']),
         returning=True
     )
@@ -193,7 +193,7 @@ async def test_curd_perm_insert():
     # 注：这里存在问题，权限检查过后，过滤掉部分列应再次检查data model
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite(User).parse({'id': 10, 'nickname': 'aaa'})],
+        [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User).bind(True)],
         perm=PermInfo(True, None, role_visitor)
     )
     assert len(ret) == 0  # all filtered
@@ -201,7 +201,7 @@ async def test_curd_perm_insert():
     # perm user
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite(User).parse({'id': 10, 'nickname': 'aaa', 'username': 'u1'}, check_insert=True)],
+        [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'u1'})],
         perm=PermInfo(True, None, role_user)
     )
     assert len(ret) == 1
@@ -212,7 +212,7 @@ async def test_curd_perm_insert():
     # perm not check
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite(User, {'nickname': 'qqqq', 'username': 'u1'}, check_insert=True)],
+        [ValuesToWrite({'nickname': 'qqqq', 'username': 'u1'}, User).bind(True)],
         perm=PermInfo(False, None, role_visitor)
     )
     assert len(ret) == 1
@@ -220,7 +220,7 @@ async def test_curd_perm_insert():
     # with returning
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite(User, {'nickname': 'wwww', 'username': 'u2'}, check_insert=True)],
+        [ValuesToWrite({'nickname': 'wwww', 'username': 'u2'}, User).bind(check_insert=True)],
         perm=PermInfo(False, None, role_visitor),
         returning=True
     )
