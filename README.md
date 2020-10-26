@@ -46,7 +46,7 @@ c = PeeweeCrud(None, {
 ```python
 from pycurd.values import ValuesToWrite
 
-v = ValuesToWrite(User, {'nickname': 'wwww', 'username': 'u2'}, check_insert=True)
+v = ValuesToWrite({'nickname': 'wwww', 'username': 'u2'})
 lst = await c.insert_many(User, [v])
 
 print(lst)
@@ -70,7 +70,7 @@ print([x.to_dict() for x in lst])
 from pycurd.query import QueryInfo
 from pycurd.values import ValuesToWrite
 
-v = ValuesToWrite(User, {'nickname': 'bbb', 'username': 'u2'})
+v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
 lst = await c.update(QueryInfo.from_json(User, {
     'id.in': [1,2,3]
 }), v)

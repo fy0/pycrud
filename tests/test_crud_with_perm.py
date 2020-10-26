@@ -84,7 +84,7 @@ async def test_curd_perm_write():
         'user': RoleDefine({
             User: TablePerm({
                 User.id: {A.READ, A.QUERY},
-                User.nickname: {A.READ, A.WRITE},
+                User.nickname: {A.READ, A.UPDATE},
                 User.password: {A.READ}
             })
         }, match=None)
@@ -143,7 +143,7 @@ async def test_curd_perm_delete():
     role_user = RoleDefine({
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
-            User.nickname: {A.READ, A.WRITE},
+            User.nickname: {A.READ, A.UPDATE},
             User.password: {A.READ}
         }, allow_delete=True)
     }, match=None)
@@ -182,7 +182,7 @@ async def test_curd_perm_insert():
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
             User.username: {A.CREATE},
-            User.nickname: {A.READ, A.WRITE, A.CREATE},
+            User.nickname: {A.READ, A.UPDATE, A.CREATE},
             User.password: {A.READ, A.CREATE}
         }, allow_delete=True)
     }, match=None)

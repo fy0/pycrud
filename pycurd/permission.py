@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 class A(Enum):
     QUERY = 'query'
-    READ = 'read'
-    WRITE = 'write'
     CREATE = 'create'
+    READ = 'read'
+    UPDATE = 'update'
 
-    ALL = {QUERY, READ, WRITE, CREATE}
+    ALL = {QUERY, CREATE, READ, UPDATE}
 
 
 # PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]

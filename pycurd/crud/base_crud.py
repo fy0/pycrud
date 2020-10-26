@@ -111,7 +111,7 @@ class BaseCrud(CoreCrud, ABC):
     async def update_with_perm(self, info: QueryInfo, values: ValuesToWrite, returning=False,
                                *, perm: PermInfo) -> Union[List[Any], List[QueryResultRow]]:
         if perm.is_check:
-            avail = perm.role.get_perm_avail(info.from_table, A.WRITE)
+            avail = perm.role.get_perm_avail(info.from_table, A.UPDATE)
 
             for j in (values.keys() - avail):
                 del values[j]

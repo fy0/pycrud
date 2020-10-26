@@ -1,3 +1,4 @@
+import inspect
 from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable
 
 from pydantic import BaseModel, create_model
@@ -38,21 +39,6 @@ class RecordMappingBase:
     @classproperty
     def table_name(cls):
         return camel_case_to_underscore_case(cls.__name__)
-
-    def __init_subclass__(cls, **kwargs):
-        # 这块逻辑其实挺奇怪的 后面再说
-        if cls.__name__ == 'RecordMapping':
-            return
-
-        cls.all_mappings[camel_case_to_underscore_case(cls.__name__)] = cls
-        cls.record_fields = {}
-
-        for i in cls.__annotations__:
-            if i not in {'__annotations__', 'record_fields'}:
-                f = RecordMappingField(i)
-                f.table = cls
-                setattr(cls, i, f)
-                cls.record_fields[i] = f
 
     @property
     def fk_extra(self):
@@ -146,11 +132,20 @@ class RecordMapping(BaseModel, RecordMappingBase):
             opt = cls.__field_defaults__.copy()
             opt.update(to_optional or {})
 
+        def get_all_annotations():
+            all_an = {}
+            for i in inspect.getmro(cls)[::-1]:
+                an = getattr(i, '__annotations__', None)
+                if an:
+                    all_an.update(an)
+            return all_an
+
+        all_an = get_all_annotations()
         model = create_model(
             '*partial_' + cls.__name__,
             __base__=RecordMapping,
             **{
-                field: (cls.__annotations__[field], opt.get(field, ...))
+                field: (all_an[field], opt.get(field, ...))
                 for field in fields - exclude
             }
         )
@@ -161,6 +156,15 @@ class RecordMapping(BaseModel, RecordMappingBase):
 
         if cls.__name__.startswith('*partial_'):
             return
+
+        cls.all_mappings[cls.table_name] = cls
+        cls.record_fields = {}
+
+        for i in cls.__fields__:
+            f = RecordMappingField(i)
+            f.table = cls
+            setattr(cls, i, f)
+            cls.record_fields[i] = f
 
         assert cls.record_fields.get('id'), 'id must be defined for %s' % cls
         cls.partial_model = cls.to_partial()
