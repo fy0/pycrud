@@ -31,6 +31,9 @@ class RoleDefine:
     based_on: 'RoleDefine' = None
     match: Union[None, str] = None
 
+    def __hash__(self):
+        return id(self)
+
     def __post_init__(self):
         self.rebind()
 

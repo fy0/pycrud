@@ -56,10 +56,12 @@ class RecordMappingBase:
         pass
 
     @classmethod
-    async def on_read(cls,
-                      info: 'QueryInfo',
-                      when_complete: List[Callable[[List[QueryResultRow]], Awaitable]],
-                      perm: 'PermInfo' = None):
+    async def on_read(
+            cls,
+            info: 'QueryInfo',
+            when_complete: List[Callable[[List[QueryResultRow]], Awaitable]],
+            perm: 'PermInfo' = None
+    ):
         """
         触发接口：list insert(with returning) update(with returning)
         :param info:
@@ -70,19 +72,23 @@ class RecordMappingBase:
         pass
 
     @classmethod
-    async def on_insert(cls,
-                        values_lst: List['ValuesToWrite'],
-                        when_complete: List[Callable[[IDList], Awaitable]],
-                        perm: 'PermInfo' = None):
+    async def on_insert(
+            cls,
+            values_lst: List['ValuesToWrite'],
+            when_complete: List[Callable[[IDList], Awaitable]],
+            perm: 'PermInfo' = None
+    ):
         pass
 
     @classmethod
-    async def on_update(cls,
-                        info: 'QueryInfo',
-                        values: 'ValuesToWrite',
-                        when_before_update: List[Callable[[IDList], Awaitable]],
-                        when_complete: List[Callable[[], Awaitable]],
-                        perm: 'PermInfo' = None):
+    async def on_update(
+            cls,
+            info: 'QueryInfo',
+            values: 'ValuesToWrite',
+            when_before_update: List[Callable[[IDList], Awaitable]],
+            when_complete: List[Callable[[], Awaitable]],
+            perm: 'PermInfo' = None
+    ):
         """
         触发接口：update
         :param info:
@@ -95,11 +101,13 @@ class RecordMappingBase:
         pass
 
     @classmethod
-    async def on_delete(cls,
-                        info: 'QueryInfo',
-                        when_before_delete: List[Callable[[IDList], Awaitable]],
-                        when_complete: List[Callable[[], Awaitable]],
-                        perm: 'PermInfo' = None):
+    async def on_delete(
+            cls,
+            info: 'QueryInfo',
+            when_before_delete: List[Callable[[IDList], Awaitable]],
+            when_complete: List[Callable[[], Awaitable]],
+            perm: 'PermInfo' = None
+    ):
         pass
 
 

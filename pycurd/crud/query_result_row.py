@@ -17,23 +17,29 @@ class QueryResultRow:
     base: Type['RecordMapping']
     extra: Any = field(default_factory=lambda: {})
 
-    def to_dict(self):
-        data = {}
-        for i, j in zip(self.info.select_for_curd, self.raw_data):
-            if i.table == self.base:
-                data[i] = j
+    def __post_init__(self):
+        self._dict_cache = None
 
-        if self.extra:
-            ex = {}
-            for k, v in self.extra.items():
-                if isinstance(v, List):
-                    ex[k] = [x.to_dict() for x in v]
-                elif isinstance(v, QueryResultRow):
-                    ex[k] = v.to_dict()
-                else:
-                    ex[k] = None
-            data['$extra'] = ex
-        return data
+    def to_dict(self):
+        if self._dict_cache is None:
+            data = {}
+            for i, j in zip(self.info.select_for_curd, self.raw_data):
+                if i.table == self.base:
+                    data[i] = j
+
+            if self.extra:
+                ex = {}
+                for k, v in self.extra.items():
+                    if isinstance(v, List):
+                        ex[k] = [x.to_dict() for x in v]
+                    elif isinstance(v, QueryResultRow):
+                        ex[k] = v.to_dict()
+                    else:
+                        ex[k] = None
+                data['$extra'] = ex
+            self._dict_cache = data
+
+        return self._dict_cache
 
     def __repr__(self):
         return '<%s %s id: %s>' % (self.__class__.__name__, get_class_full_name(self.info.from_table), self.id)
