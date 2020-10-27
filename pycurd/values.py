@@ -86,7 +86,7 @@ class ValuesToWrite(dict):
         if check_insert:
             ret = table.parse_obj(final)
             self.clear()
-            self.update(ret.dict(skip_defaults=False, exclude_none=True))
+            self.update(ret.dict(exclude_unset=False, exclude_none=True))
         else:
             ret = table.partial_model.parse_obj(final)
             self.clear()
