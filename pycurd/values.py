@@ -3,7 +3,7 @@ from typing import Mapping, TYPE_CHECKING, Type, Dict
 from multidict import MultiDict
 
 if TYPE_CHECKING:
-    from pycrud.types import RecordMapping
+    from pycurd.types import RecordMapping
 
 
 class ValuesToWrite(dict):

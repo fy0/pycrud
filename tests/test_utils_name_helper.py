@@ -1,4 +1,4 @@
-from pycrud.utils.name_helper import get_class_full_name, camel_case_to_underscore_case
+from pycurd.utils.name_helper import get_class_full_name, camel_case_to_underscore_case
 
 
 class A:

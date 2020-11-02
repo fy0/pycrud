@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Any, Union, Tuple, List, Type, TYPE_CHECKING
 
-from pycrud.utils.name_helper import get_class_full_name
+from pycurd.utils.name_helper import get_class_full_name
 
 if TYPE_CHECKING:
-    from pycrud.query import QueryInfo
-    from pycrud.types import RecordMapping
+    from pycurd.query import QueryInfo
+    from pycurd.types import RecordMapping
 
 
 @dataclass

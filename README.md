@@ -23,8 +23,8 @@ Features:
 from typing import Optional
 
 from playhouse.db_url import connect
-from pycrud.crud.ext.peewee_crud import PeeweeCrud
-from pycrud.types import RecordMapping
+from pycurd.crud.ext.peewee_crud import PeeweeCrud
+from pycurd.types import RecordMapping
 
 class User(RecordMapping):
     id: Optional[int]
@@ -44,7 +44,7 @@ c = PeeweeCrud(None, {
 #### Create
 
 ```python
-from pycrud.values import ValuesToWrite
+from pycurd.values import ValuesToWrite
 
 v = ValuesToWrite({'nickname': 'wwww', 'username': 'u2'})
 lst = await c.insert_many(User, [v])
@@ -55,7 +55,7 @@ print(lst)
 #### Read
 
 ```python
-from pycrud.query import QueryInfo
+from pycurd.query import QueryInfo
 
 lst = await c.get_list(QueryInfo.from_json(User, {
     'id.eq': 1
@@ -67,8 +67,8 @@ print([x.to_dict() for x in lst])
 #### Update
 
 ```python
-from pycrud.query import QueryInfo
-from pycrud.values import ValuesToWrite
+from pycurd.query import QueryInfo
+from pycurd.values import ValuesToWrite
 
 v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
 lst = await c.update(QueryInfo.from_json(User, {
@@ -81,7 +81,7 @@ print(lst)
 #### Delete
 
 ```python
-from pycrud.query import QueryInfo
+from pycurd.query import QueryInfo
 
 lst = await c.delete(QueryInfo.from_json(User, {
     'id.in': [1,2,3]

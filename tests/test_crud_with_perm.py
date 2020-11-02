@@ -1,13 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from pycrud.crud.base_crud import PermInfo
-from pycrud.crud.ext.peewee_crud import PeeweeCrud
-from pycrud.crud.query_result_row import QueryResultRow
-from pycrud.error import PermissionException
-from pycrud.permission import RoleDefine, TablePerm, A
-from pycrud.query import QueryInfo
-from pycrud.values import ValuesToWrite
+from pycurd.crud.base_crud import PermInfo
+from pycurd.crud.ext.peewee_crud import PeeweeCrud
+from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.error import PermissionException
+from pycurd.permission import RoleDefine, TablePerm, A
+from pycurd.query import QueryInfo
+from pycurd.values import ValuesToWrite
 from tests.test_crud import crud_db_init, User
 
 pytestmark = [pytest.mark.asyncio]

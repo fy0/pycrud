@@ -1,4 +1,4 @@
-from pycrud import __version__
+from pycurd import __version__
 
 
 def test_version():

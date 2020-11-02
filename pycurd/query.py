@@ -5,9 +5,9 @@ from typing import List, Union, Set, Dict, Any, Type
 
 from typing_extensions import Literal
 
-from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
-from pycrud.error import UnknownQueryOperator, InvalidQueryConditionValue
-from pycrud.types import RecordMapping, RecordMappingField
+from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
+from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue
+from pycurd.types import RecordMapping, RecordMappingField
 
 
 class LogicRelation:
