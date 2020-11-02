@@ -24,11 +24,11 @@ class ValuesToWrite(dict):
         if raw_data:
             assert isinstance(raw_data, Mapping)
 
-        self.clear()
-        self.update(self._dict_convert(raw_data))
+            self.clear()
+            self.update(self._dict_convert(raw_data))
 
-        if try_parse:
-            self.try_bind()
+            if try_parse:
+                self.try_bind()
 
     def _dict_convert(self, data) -> Dict:
         if isinstance(data, dict):

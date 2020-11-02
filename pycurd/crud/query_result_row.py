@@ -43,3 +43,9 @@ class QueryResultRow:
 
     def __repr__(self):
         return '<%s %s id: %s>' % (self.__class__.__name__, get_class_full_name(self.info.from_table), self.id)
+
+
+class QueryResultRowList(list):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.rows_count = None

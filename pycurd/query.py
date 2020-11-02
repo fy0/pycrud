@@ -6,7 +6,7 @@ from typing import List, Union, Set, Dict, Any, Type
 from typing_extensions import Literal
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
-from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue
+from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn
 from pycurd.types import RecordMapping, RecordMappingField
 
 
@@ -222,6 +222,15 @@ class QueryInfo:
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
 
+        def http_value_try_parse(value):
+            if from_http_query:
+                try:
+                    return json.loads(value)
+                except (TypeError, json.JSONDecodeError):
+                    raise InvalidQueryConditionValue(
+                        'right value must can be unserializable with json.loads')
+            return value
+
         def parse_select(select_text, unselect_text):
             if select_text is None:
                 selected = get_items(table.record_fields.keys())
@@ -263,20 +272,21 @@ class QueryInfo:
 
                 elif '.' in key:
                     field_name, op_name = key.split('.', 1)
-                    if from_http_query:
-                        try:
-                            value = json.loads(value)
-                        except (TypeError, json.JSONDecodeError):
-                            raise InvalidQueryConditionValue('right value must can be unserializable with json.loads')
+                    value = http_value_try_parse(value)
 
                     op = QUERY_OP_FROM_TXT.get(op_name)
                     if op is None:
                         raise UnknownQueryOperator(op_name)
 
-                    if op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS, QUERY_OP_RELATION.CONTAINS_ANY):
+                    if op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS):
+                        value = http_value_try_parse(value)
                         assert isinstance(value, List), 'The right value of relation operator must be list'
 
-                    conditions.append(ConditionExpr(getattr(table, field_name), op, value))
+                    try:
+                        field_ = getattr(table, field_name)
+                        conditions.append(ConditionExpr(field_, op, value))
+                    except AttributeError:
+                        raise InvalidQueryConditionColumn("column not exists: %s" % field_name)
 
             return conditions
 

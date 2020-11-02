@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 from dataclasses import dataclass
 from functools import reduce
@@ -28,7 +29,7 @@ _sql_method_map = {
     QUERY_OP_RELATION.IS: '__eq__',
     QUERY_OP_RELATION.IS_NOT: '__ne__',
     QUERY_OP_RELATION.CONTAINS: 'contains',
-    QUERY_OP_RELATION.CONTAINS_ANY: 'has_any_keys',
+    QUERY_OP_RELATION.CONTAINS_ANY: 'contains',
     QUERY_OP_RELATION.PREFIX: 'startswith',
 }
 
@@ -43,8 +44,18 @@ class PlaceHolderGenerator:
         self.count = 1
         self.values = []
 
-    def next(self, value) -> Parameter:
-        if isinstance(value, (List, Set, Tuple)):
+    def next(self, value, *, left_is_array=False, left_is_json=False, contains_relation=False) -> Parameter:
+        if left_is_array or contains_relation:
+            p = Parameter(self.template.format(count=self.count))
+            self.count += 1
+            self.values.append(value)
+
+        elif left_is_json:
+            p = Parameter(self.template.format(count=self.count))
+            self.count += 1
+            self.values.append(json.dumps(value))
+
+        elif isinstance(value, (List, Set, Tuple)):
             tmpls = []
 
             for i in value:
@@ -57,10 +68,12 @@ class PlaceHolderGenerator:
             # else:
             tmpl1 = ', '.join(tmpls)
             p = Parameter(f'({tmpl1})')
+
         else:
             p = Parameter(self.template.format(count=self.count))
             self.count += 1
             self.values.append(value)
+
         return p
 
 
@@ -78,20 +91,35 @@ class SQLCrud(BaseCrud):
     mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
 
     def __post_init__(self):
+        self._table_cache = {
+            # 'mapping': {
+            #     'array_fields': [],
+            #     'json_fields': [],
+            # }
+        }
+
         for k, v in self.mapping2model.items():
             if isinstance(v, str):
                 self.mapping2model[k] = pypika.Table(v)
+
+            self._table_cache[k] = {
+                'array_fields': set(),
+                'json_fields': set(),
+            }
 
     async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], *, _perm=None) -> IDList:
         when_complete = []
         await table.on_insert(values_list, when_complete, _perm)
 
         model = self.mapping2model[table]
+        tc = self._table_cache[table]
         sql_lst = []
 
         for i in values_list:
             phg = self.get_placeholder_generator()
-            sql = Query().into(model).columns(*i.keys()).insert(*[phg.next(x) for x in i.values()])
+            sql = Query().into(model).columns(*i.keys()).insert(
+                *[phg.next(_b, left_is_array=_a in tc['array_fields'], left_is_json=_a in tc['json_fields']) for _a, _b in i.items()]
+            )
             sql_lst.append([sql, phg])
 
         ret = []
@@ -199,7 +227,11 @@ class SQLCrud(BaseCrud):
                     if isinstance(c.value, RecordMappingField):
                         real_value = getattr(self.mapping2model[c.value.table], c.value)
                     else:
-                        real_value = phg.next(c.value)
+                        contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS,
+                                                     QUERY_OP_RELATION.CONTAINS_ANY)
+
+                        value = [c.value] if c.op == QUERY_OP_RELATION.CONTAINS_ANY else c.value
+                        real_value = phg.next(value, contains_relation=contains_relation)
 
                     cond = getattr(field, _sql_method_map[c.op])(real_value)
                     return cond

@@ -11,6 +11,10 @@ class PermissionException(PyCrudException):
     pass
 
 
+class InvalidQueryConditionColumn(PyCrudException):
+    pass
+
+
 class InvalidQueryConditionValue(PyCrudException):
     pass
 

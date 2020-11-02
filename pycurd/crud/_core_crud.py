@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Type, Iterable, List
 
-from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycurd.query import QueryInfo
 from pycurd.types import RecordMapping, IDList
 from pycurd.values import ValuesToWrite
@@ -23,5 +23,5 @@ class CoreCrud:
         pass
 
     @abstractmethod
-    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> QueryResultRowList:
         pass
