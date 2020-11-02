@@ -23,5 +23,5 @@ class CoreCrud:
         pass
 
     @abstractmethod
-    async def get_list(self, info: QueryInfo, *, _perm=None) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> List[QueryResultRow]:
         pass

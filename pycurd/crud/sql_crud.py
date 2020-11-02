@@ -1,11 +1,11 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from typing import Dict, Type, Union, List, Iterable, Any
+from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
 from pypika import Query
-from pypika.terms import ComplexCriterion
+from pypika.terms import ComplexCriterion, Parameter
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.base_crud import BaseCrud
@@ -34,6 +34,42 @@ _sql_method_map = {
 
 
 @dataclass
+class PlaceHolderGenerator:
+    template = '?'  # sqlite
+    # template = '%s'  # mysql
+    # template = '${count}'  # PostgreSQL
+
+    def __post_init__(self):
+        self.count = 1
+        self.values = []
+
+    def next(self, value) -> Parameter:
+        if isinstance(value, (List, Set, Tuple)):
+            tmpls = []
+
+            for i in value:
+                tmpls.append(self.template.format(count=self.count))
+                self.count += 1
+
+            self.values.extend(value)
+            # if len(value) == 1:
+            #     p = Parameter(f'({tmpls[0]},)')
+            # else:
+            tmpl1 = ', '.join(tmpls)
+            p = Parameter(f'({tmpl1})')
+        else:
+            p = Parameter(self.template.format(count=self.count))
+            self.count += 1
+            self.values.append(value)
+        return p
+
+
+@dataclass
+class SQLExecuteResult:
+    lastrowid: Any
+
+
+@dataclass
 class SQLCrud(BaseCrud):
     mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
 
@@ -50,12 +86,13 @@ class SQLCrud(BaseCrud):
         sql_lst = []
 
         for i in values_list:
-            sql = Query().into(model).columns(*i.keys()).insert(*i.values())
-            sql_lst.append(sql)
+            phg = self.get_placeholder_generator()
+            sql = Query().into(model).columns(*i.keys()).insert(*[phg.next(x) for x in i.values()])
+            sql_lst.append([sql, phg])
 
         ret = []
         for i in sql_lst:
-            ret.append(await self.execute_sql(i.get_sql()))
+            ret.append(await self.execute_sql(i[0].get_sql(), i[1]))
 
         id_lst = [x.lastrowid for x in ret]
         for i in when_complete:
@@ -79,11 +116,15 @@ class SQLCrud(BaseCrud):
             await i(id_lst)
 
         # 选择项
-        sql = Query().update(model).where(model.id.isin(id_lst))
+        phg = self.get_placeholder_generator()
+        sql = Query().update(model)
         for k, v in values.items():
-            sql = sql.set(k, v)
+            sql = sql.set(k, phg.next(v))
 
-        await self.execute_sql(sql.get_sql())
+        # 注意：生成的SQL顺序和values顺序的对应关系
+        sql = sql.where(model.id.isin(phg.next(id_lst)))
+        await self.execute_sql(sql.get_sql(), phg)
+
         for i in when_complete:
             await i()
 
@@ -104,15 +145,16 @@ class SQLCrud(BaseCrud):
         for i in when_before_delete:
             await i(id_lst)
 
-        sql = Query().from_(model).delete().where(model.id.isin(id_lst))
-        await self.execute_sql(sql.get_sql())
+        phg = self.get_placeholder_generator()
+        sql = Query().from_(model).delete().where(model.id.isin(phg.next(id_lst)))
+        await self.execute_sql(sql.get_sql(), phg)
 
         for i in when_complete:
             await i()
 
         return id_lst
 
-    async def get_list(self, info: QueryInfo, *, _perm=None) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> List[QueryResultRow]:
         # hook
         await info.from_table.on_query(info)
         when_complete = []
@@ -129,6 +171,7 @@ class SQLCrud(BaseCrud):
             select_fields.append(getattr(self.mapping2model[i.table], i))
 
         q = q.select(*select_fields)
+        phg = self.get_placeholder_generator()
 
         # 构造条件
         if info.conditions:
@@ -152,14 +195,10 @@ class SQLCrud(BaseCrud):
                     if isinstance(c.value, RecordMappingField):
                         real_value = getattr(self.mapping2model[c.value.table], c.value)
                     else:
-                        real_value = c.value
+                        real_value = phg.next(c.value)
 
                     cond = getattr(field, _sql_method_map[c.op])(real_value)
                     return cond
-
-            ret = solve_condition(info.conditions)
-            if ret:
-                q = q.where(ret)
 
             if info.join:
                 for ji in info.join:
@@ -173,6 +212,10 @@ class SQLCrud(BaseCrud):
                             jtable.id == Query.from_(jtable).select(jtable.id).where(where).limit(ji.limit)
                         )
 
+            ret = solve_condition(info.conditions)
+            if ret:
+                q = q.where(ret)
+
         # 一些限制
         if info.order_by:
             q = q.orderby(info.order_by)
@@ -182,7 +225,7 @@ class SQLCrud(BaseCrud):
 
         # 查询结果
         ret = []
-        cursor = await self.execute_sql(q.get_sql())
+        cursor = await self.execute_sql(q.get_sql(), phg)
 
         for i in cursor:
             ret.append(QueryResultRow(i[0], i[1:], info, info.from_table))
@@ -193,5 +236,9 @@ class SQLCrud(BaseCrud):
         return ret
 
     @abstractmethod
-    async def execute_sql(self, sql):
+    def get_placeholder_generator(self) -> PlaceHolderGenerator:
+        pass
+
+    @abstractmethod
+    async def execute_sql(self, sql, phg: PlaceHolderGenerator):
         pass

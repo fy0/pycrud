@@ -142,9 +142,9 @@ class BaseCrud(CoreCrud, ABC):
         info = await self._solve_query(info, perm)
         return await self.delete(info, _perm=perm)
 
-    async def get_list_with_perm(self, info: QueryInfo, *, perm: PermInfo) -> List[QueryResultRow]:
+    async def get_list_with_perm(self, info: QueryInfo, with_count=False, *, perm: PermInfo) -> List[QueryResultRow]:
         info = await self._solve_query(info, perm)
-        return await self.get_list(info, _perm=perm)
+        return await self.get_list(info, with_count, _perm=perm)
 
     async def get_list_with_foreign_keys(self, info: QueryInfo, perm: PermInfo = None):
         if perm is None:

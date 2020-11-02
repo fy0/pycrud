@@ -6,7 +6,7 @@ import peewee
 import pypika
 
 from pycurd.types import RecordMapping
-from pycurd.crud.sql_crud import SQLCrud
+from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator
 
 
 @dataclass
@@ -21,5 +21,8 @@ class PeeweeCrud(SQLCrud):
 
         super().__post_init__()
 
-    async def execute_sql(self, sql):
-        return self.db.execute_sql(sql)
+    def get_placeholder_generator(self) -> PlaceHolderGenerator:
+        return PlaceHolderGenerator()
+
+    async def execute_sql(self, sql, phg: PlaceHolderGenerator):
+        return self.db.execute_sql(sql, phg.values)

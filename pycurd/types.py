@@ -130,14 +130,21 @@ class RecordMapping(BaseModel, RecordMappingBase):
         if exclude is None:
             exclude = set()
 
+        fields_defaults = {}
+        _missing = object()
+        for k, v in cls.__fields__.items():
+            val = getattr(v, 'default', _missing)
+            if val != _missing:
+                fields_defaults[k] = val
+
         if to_optional == '__all__':
             opt = {f: None for f in fields}
-            opt.update(cls.__field_defaults__)
+            opt.update(fields_defaults)
         elif isinstance(to_optional, set):
             opt = {f: None for f in to_optional}
-            opt.update(cls.__field_defaults__)
+            opt.update(fields_defaults)
         else:
-            opt = cls.__field_defaults__.copy()
+            opt = fields_defaults.copy()
             opt.update(to_optional or {})
 
         def get_all_annotations():
