@@ -19,11 +19,24 @@ class PeeweeCrud(SQLCrud):
 
     def __post_init__(self):
         import peewee
+        from playhouse.postgres_ext import ArrayField
+        from playhouse.postgres_ext import BinaryJSONField
+        from playhouse.mysql_ext import JSONField as MySQL_JSONField
+        from playhouse.sqlite_ext import JSONField as SQLite_JSONField
+
+        super().__post_init__()
+
+        for k, v in self.mapping2model.items():
+            if inspect.isclass(v) and issubclass(v, peewee.Model):
+                for f in v._meta.fields:
+                    if isinstance(f, ArrayField):
+                        self._table_cache[k]['array_fields'].append(f.name)
+                    elif isinstance(f, (BinaryJSONField, MySQL_JSONField, SQLite_JSONField)):
+                        self._table_cache[k]['json_fields'].append(f.name)
+
         for k, v in self.mapping2model.items():
             if inspect.isclass(v) and issubclass(v, peewee.Model):
                 self.mapping2model[k] = pypika.Table(v._meta.table_name)
-
-        super().__post_init__()
 
     def get_placeholder_generator(self) -> PlaceHolderGenerator:
         import peewee

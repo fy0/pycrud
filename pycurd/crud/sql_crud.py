@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 from dataclasses import dataclass
 from functools import reduce
@@ -43,8 +44,18 @@ class PlaceHolderGenerator:
         self.count = 1
         self.values = []
 
-    def next(self, value) -> Parameter:
-        if isinstance(value, (List, Set, Tuple)):
+    def next(self, value, *, is_array=False, is_json=False) -> Parameter:
+        if is_array:
+            p = Parameter(self.template.format(count=self.count))
+            self.count += 1
+            self.values.append(value)
+
+        elif is_json:
+            p = Parameter(self.template.format(count=self.count))
+            self.count += 1
+            self.values.append(json.dumps(value))
+
+        elif isinstance(value, (List, Set, Tuple)):
             tmpls = []
 
             for i in value:
@@ -57,10 +68,12 @@ class PlaceHolderGenerator:
             # else:
             tmpl1 = ', '.join(tmpls)
             p = Parameter(f'({tmpl1})')
+
         else:
             p = Parameter(self.template.format(count=self.count))
             self.count += 1
             self.values.append(value)
+
         return p
 
 
@@ -78,20 +91,35 @@ class SQLCrud(BaseCrud):
     mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
 
     def __post_init__(self):
+        self._table_cache = {
+            # 'mapping': {
+            #     'array_fields': [],
+            #     'json_fields': [],
+            # }
+        }
+
         for k, v in self.mapping2model.items():
             if isinstance(v, str):
                 self.mapping2model[k] = pypika.Table(v)
+
+            self._table_cache[k] = {
+                'array_fields': set(),
+                'json_fields': set(),
+            }
 
     async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], *, _perm=None) -> IDList:
         when_complete = []
         await table.on_insert(values_list, when_complete, _perm)
 
         model = self.mapping2model[table]
+        tc = self._table_cache[table]
         sql_lst = []
 
         for i in values_list:
             phg = self.get_placeholder_generator()
-            sql = Query().into(model).columns(*i.keys()).insert(*[phg.next(x) for x in i.values()])
+            sql = Query().into(model).columns(*i.keys()).insert(
+                *[phg.next(_b, is_array=_a in tc['array_fields'], is_json=_a in tc['json_fields']) for _a, _b in i.items()]
+            )
             sql_lst.append([sql, phg])
 
         ret = []

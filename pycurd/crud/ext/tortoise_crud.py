@@ -19,13 +19,23 @@ class TortoiseCrud(SQLCrud):
 
     def __post_init__(self):
         import tortoise
+        from tortoise.fields import JSONField
+        super().__post_init__()
+
+        for k, v in self.mapping2model.items():
+            if inspect.isclass(v) and issubclass(v, tortoise.models.Model):
+                for name, f in v._meta.fields_map.items():
+                    if f.SQL_TYPE.endswith('[]'):
+                        self._table_cache[k]['array_fields'].add(name)
+                    elif isinstance(f, JSONField):
+                        self._table_cache[k]['json_fields'].add(name)
+
         for k, v in self.mapping2model.items():
             if inspect.isclass(v) and issubclass(v, tortoise.models.Model):
                 self.mapping2model[k] = pypika.Table(v._meta.db_table)
 
         self._phg_cache = None
         self.is_pg = False
-        super().__post_init__()
 
     def get_placeholder_generator(self) -> PlaceHolderGenerator:
         if self._phg_cache is None:
