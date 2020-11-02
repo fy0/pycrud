@@ -5,8 +5,8 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycrud.types import RecordMapping
-from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator
+from pycurd.types import RecordMapping
+from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator
 
 if typing.TYPE_CHECKING:
     import peewee

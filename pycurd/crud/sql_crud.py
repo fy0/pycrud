@@ -67,6 +67,10 @@ class PlaceHolderGenerator:
 @dataclass
 class SQLExecuteResult:
     lastrowid: Any
+    values: Iterable = None
+
+    def __iter__(self):
+        return iter(self.values)
 
 
 @dataclass
@@ -228,7 +232,8 @@ class SQLCrud(BaseCrud):
         cursor = await self.execute_sql(q.get_sql(), phg)
 
         for i in cursor:
-            ret.append(QueryResultRow(i[0], i[1:], info, info.from_table))
+            it = iter(i)
+            ret.append(QueryResultRow(next(it), list(it), info, info.from_table))
 
         for i in when_complete:
             await i(ret)

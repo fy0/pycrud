@@ -5,9 +5,9 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycrud.types import RecordMapping
-from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
-from pycrud.error import DBException
+from pycurd.types import RecordMapping
+from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
+from pycurd.error import DBException
 
 if typing.TYPE_CHECKING:
     import tortoise
@@ -24,6 +24,7 @@ class TortoiseCrud(SQLCrud):
                 self.mapping2model[k] = pypika.Table(v._meta.db_table)
 
         self._phg_cache = None
+        self.is_pg = False
         super().__post_init__()
 
     def get_placeholder_generator(self) -> PlaceHolderGenerator:
@@ -52,6 +53,7 @@ class TortoiseCrud(SQLCrud):
                 self._phg_cache = '?'
             elif AsyncpgDBClient and isinstance(conn, AsyncpgDBClient):
                 self._phg_cache = '${count}'
+                self.is_pg = True
             elif MySQLClient and isinstance(conn, MySQLClient):
                 self._phg_cache = '%s'
             else:
@@ -64,13 +66,19 @@ class TortoiseCrud(SQLCrud):
         try:
             async with in_transaction() as tconn:
                 if sql.startswith('INSERT INTO'):
-                    r = await tconn.execute_insert(sql, phg.values)
-                    return SQLExecuteResult(r)
+                    # tortoise-orm 本身对 PostgreSQL 没有很好的支持，我自己来
+                    if self.is_pg:
+                        sql += ' RETURNING id'
+                        r = await tconn.execute_insert(sql, phg.values)
+                        # [<Record id=b'ff20'>]
+                        return SQLExecuteResult(r[0])
+                    else:
+                        r = await tconn.execute_insert(sql, phg.values)
+                        return SQLExecuteResult(r)
                 else:
+                    # rows affected, The resultset: [1, {}]
                     r = await tconn.execute_query(sql, phg.values)
-                    # rows affected, The resultset [1, {}]
-                    print(r)
-                    return r
+                    r2 = [x.values() for x in r[1]]
+                    return SQLExecuteResult(None, r2)
         except Exception as e:
-            await tconn.rollback()
             raise DBException(*e.args)
