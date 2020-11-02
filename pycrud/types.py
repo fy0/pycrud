@@ -4,14 +4,14 @@ from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callabl
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.utils.cls_property import classproperty
-from pycurd.utils.name_helper import camel_case_to_underscore_case
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.utils.cls_property import classproperty
+from pycrud.utils.name_helper import camel_case_to_underscore_case
 
 if TYPE_CHECKING:
-    from pycurd.query import QueryInfo
-    from pycurd.values import ValuesToWrite
-    from pycurd.crud.base_crud import PermInfo
+    from pycrud.query import QueryInfo
+    from pycrud.values import ValuesToWrite
+    from pycrud.crud.base_crud import PermInfo
 
 IDList = List[Any]
 

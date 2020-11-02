@@ -3,12 +3,12 @@ from typing import Optional
 import peewee
 import pytest
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr
-from pycurd.types import RecordMapping
-from pycurd.values import ValuesToWrite
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
+from pycrud.types import RecordMapping
+from pycrud.values import ValuesToWrite
 
 pytestmark = [pytest.mark.asyncio]
 

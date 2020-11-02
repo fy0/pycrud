@@ -7,12 +7,12 @@ import pypika
 from pypika import Query
 from pypika.terms import ComplexCriterion, Parameter
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from pycurd.crud.base_crud import BaseCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
-from pycurd.types import RecordMapping, RecordMappingField, IDList
-from pycurd.values import ValuesToWrite
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from pycrud.crud.base_crud import BaseCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
+from pycrud.types import RecordMapping, RecordMappingField, IDList
+from pycrud.values import ValuesToWrite
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -35,9 +35,9 @@ _sql_method_map = {
 
 @dataclass
 class PlaceHolderGenerator:
-    template = '?'  # sqlite
-    # template = '%s'  # mysql
-    # template = '${count}'  # PostgreSQL
+    template: str = '?'  # sqlite
+    # template: str = '${count}'  # PostgreSQL
+    # template: str = '%s'  # mysql
 
     def __post_init__(self):
         self.count = 1

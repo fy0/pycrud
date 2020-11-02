@@ -4,14 +4,14 @@ from typing import Any, Dict, Union, List, Type, Iterable
 
 import pydantic
 
-from pycurd.const import QUERY_OP_RELATION
-from pycurd.crud._core_crud import CoreCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.error import PermissionException
-from pycurd.permission import RoleDefine, A
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
-from pycurd.types import RecordMapping, IDList, RecordMappingField
-from pycurd.values import ValuesToWrite
+from pycrud.const import QUERY_OP_RELATION
+from pycrud.crud._core_crud import CoreCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.error import PermissionException
+from pycrud.permission import RoleDefine, A
+from pycrud.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
+from pycrud.types import RecordMapping, IDList, RecordMappingField
+from pycrud.values import ValuesToWrite
 
 
 @dataclass
@@ -97,9 +97,9 @@ class BaseCrud(CoreCrud, ABC):
                 i.bind(True, table=table)
                 if i:
                     values_list_new.append(i)
-            except pydantic.ValidationError:
+            except pydantic.ValidationError as e:
                 # TODO: 权限检查之后过不了检验的后面再处置
-                pass
+                raise e
 
         lst = await self.insert_many(table, values_list_new, _perm=perm)
 

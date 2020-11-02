@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "pycurd"
-version = "0.1.4"
+name = "pycrud"
+version = "0.1.5"
 description = "A common crud framework for web."
 authors = ["fy <fy0748@gmail.com>"]
 
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/fy0/pycurd"
-repository = "https://github.com/fy0/pycurd"
+homepage = "https://github.com/fy0/pycrud"
+repository = "https://github.com/fy0/pycrud"
 
 [tool.poetry.dependencies]
 python = ">=3.6.9"

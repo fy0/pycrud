@@ -1,12 +1,13 @@
 import pytest
+from pydantic import ValidationError
 
-from pycurd.crud.base_crud import PermInfo
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.error import PermissionException
-from pycurd.permission import RoleDefine, TablePerm, A
-from pycurd.query import QueryInfo
-from pycurd.values import ValuesToWrite
+from pycrud.crud.base_crud import PermInfo
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.error import PermissionException
+from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.query import QueryInfo
+from pycrud.values import ValuesToWrite
 from tests.test_crud import crud_db_init, User
 
 pytestmark = [pytest.mark.asyncio]
@@ -190,13 +191,13 @@ async def test_curd_perm_insert():
     c = PeeweeCrud(None, {User: MUsers}, db)
 
     # perm visitor
-    # 注：这里存在问题，权限检查过后，过滤掉部分列应再次检查data model
-    ret = await c.insert_many_with_perm(
-        User,
-        [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User).bind(True)],
-        perm=PermInfo(True, None, role_visitor)
-    )
-    assert len(ret) == 0  # all filtered
+    with pytest.raises(ValidationError):
+        ret = await c.insert_many_with_perm(
+            User,
+            [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User)],
+            perm=PermInfo(True, None, role_visitor)
+        )
+        assert len(ret) == 0  # all filtered
 
     # perm user
     ret = await c.insert_many_with_perm(

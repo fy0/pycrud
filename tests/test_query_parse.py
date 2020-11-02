@@ -2,9 +2,9 @@ import re
 import pytest
 from dataclasses import dataclass
 
-from pycurd.const import QUERY_OP_COMPARE
-from pycurd.query import QueryInfo, ConditionLogicExpr
-from pycurd.types import RecordMapping
+from pycrud.const import QUERY_OP_COMPARE
+from pycrud.query import QueryInfo, ConditionLogicExpr
+from pycrud.types import RecordMapping
 
 
 @dataclass
