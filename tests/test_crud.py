@@ -150,6 +150,20 @@ async def test_curd_read_2():
     assert len(ret) == 1
 
 
+async def test_curd_read_with_count():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        Topic: MTopics,
+    }, db)
+
+    i = QueryInfo.from_json(Topic, {})
+    i.limit = 1
+    ret = await c.get_list(i, with_count=True)
+    assert len(ret) == 1
+    assert ret.rows_count == MTopics.select().count()
+
+
 async def test_curd_and_or():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
     c = PeeweeCrud(None, {User: MUsers}, db)

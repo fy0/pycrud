@@ -104,11 +104,31 @@ class ConditionExpr:
     def table_name(self):
         return self.column.table.table_name
 
+    def __and__(self, other):
+        return ConditionLogicExpr('and', [self, other])
+
+    def __or__(self, other):
+        return ConditionLogicExpr('or', [self, other])
+
 
 @dataclass
 class ConditionLogicExpr:
     type: Union[Literal['and'], Literal['or']]
     items: List[Union[ConditionExpr, 'ConditionLogicExpr']]
+
+    def __and__(self, other):
+        if self.type == 'and':
+            self.items.append(other)
+            return self
+        else:
+            return ConditionLogicExpr('or', [self, other])
+
+    def __or__(self, other):
+        if self.type == 'or':
+            self.items.append(other)
+            return self
+        else:
+            return ConditionLogicExpr('and', [self, other])
 
 
 @dataclass
@@ -215,6 +235,18 @@ class QueryInfo:
     @property
     def select_for_curd(self):
         return self.select
+
+    @classmethod
+    def from_table_raw(cls, table, select=None, where=None):
+        get_items = lambda keys: [getattr(table, x) for x in keys]
+        if select is None:
+            select = get_items(table.record_fields.keys())
+
+        return QueryInfo(
+            table,
+            select=select,
+            conditions=QueryConditions(where) if where else None
+        )
 
     @classmethod
     def from_json(cls, table, data, from_http_query=False):

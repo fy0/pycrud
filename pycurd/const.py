@@ -40,7 +40,7 @@ class QUERY_OP(Enum, QUERY_OP_LOGIC, QUERY_OP_COMPARE, QUERY_OP_RELATION):
 if __name__ == '__main__':
     def solve(e, t):
         for k in e:
-            print('| %s | %s | %s |' % (t, k.name, k.value))
+            print('| %s | %s | %s |' % (t, k.name, k.name))
 
     print('| type | operator | text |')
     print('| ---- | -------- | ---- |')

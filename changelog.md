@@ -1,3 +1,11 @@
+
+### 0.1.8 update 2020.11.05
+
+* Added: simple dsl
+
+* Added: list with count
+
+
 ### 0.1.7 update 2020.11.03
 
 * Fixed: operator: contains, in, notin

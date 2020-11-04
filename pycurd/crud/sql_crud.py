@@ -6,11 +6,12 @@ from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
 from pypika import Query
+from pypika.functions import Count
 from pypika.terms import ComplexCriterion, Parameter
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.base_crud import BaseCrud
-from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
 from pycurd.types import RecordMapping, RecordMappingField, IDList
 from pycurd.values import ValuesToWrite
@@ -186,7 +187,7 @@ class SQLCrud(BaseCrud):
 
         return id_lst
 
-    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> List[QueryResultRow]:
+    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> QueryResultRowList:
         # hook
         await info.from_table.on_query(info)
         when_complete = []
@@ -200,7 +201,7 @@ class SQLCrud(BaseCrud):
 
         select_fields = [model.id]
         for i in info.select_for_curd:
-            select_fields.append(getattr(self.mapping2model[i.table], i))
+            select_fields.append(getattr(self.mapping2model[i.table], i.name))
 
         q = q.select(*select_fields)
         phg = self.get_placeholder_generator()
@@ -222,10 +223,10 @@ class SQLCrud(BaseCrud):
                             return reduce(ComplexCriterion.__or__, items)
 
                 elif isinstance(c, ConditionExpr):
-                    field = getattr(self.mapping2model[c.column.table], c.column)
+                    field = getattr(self.mapping2model[c.column.table], c.column.name)
 
                     if isinstance(c.value, RecordMappingField):
-                        real_value = getattr(self.mapping2model[c.value.table], c.value)
+                        real_value = getattr(self.mapping2model[c.value.table], c.value.name)
                     else:
                         contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS,
                                                      QUERY_OP_RELATION.CONTAINS_ANY)
@@ -252,6 +253,16 @@ class SQLCrud(BaseCrud):
             if ret:
                 q = q.where(ret)
 
+        ret = QueryResultRowList()
+
+        # count
+        if with_count:
+            bak = q._selects
+            q._selects = [Count('1')]
+            cursor = await self.execute_sql(q.get_sql(), phg)
+            ret.rows_count = next(iter(cursor))[0]
+            q._selects = bak
+
         # 一些限制
         if info.order_by:
             q = q.orderby(info.order_by)
@@ -260,7 +271,6 @@ class SQLCrud(BaseCrud):
         q = q.offset(info.offset)
 
         # 查询结果
-        ret = []
         cursor = await self.execute_sql(q.get_sql(), phg)
 
         for i in cursor:

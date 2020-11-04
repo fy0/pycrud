@@ -16,13 +16,75 @@ if TYPE_CHECKING:
 IDList = List[Any]
 
 
-class RecordMappingField(str):
-    def __init__(self, _):
+class RecordMappingField:
+    def __init__(self, s):
+        self.name: str = s
         self.table: Optional['RecordMapping'] = None
-        super().__init__()
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self):
+        return str(self.name)
 
     def __repr__(self):
-        return '%s.%s' % (self.table.table_name, str(self))
+        return '%s.%s' % (self.table.table_name, str(self.name))
+
+    def _condition_expr(self, op, other):
+        from pycurd.query import ConditionExpr
+        return ConditionExpr(self, op, other)
+
+    def __eq__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.EQ, other)
+
+    def __ne__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.NE, other)
+
+    def __le__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.LE, other)
+
+    def __lt__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.LT, other)
+
+    def __ge__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.GE, other)
+
+    def __gt__(self, other):
+        from pycurd.const import QUERY_OP_COMPARE
+        return self._condition_expr(QUERY_OP_COMPARE.GT, other)
+
+    def contains(self, others: List[Any]):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.CONTAINS, others)
+
+    def contains_any(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.CONTAINS_ANY, other)
+
+    def is_(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.IS, other)
+
+    def is_not(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.IS_NOT, other)
+
+    def in_(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.IN, other)
+
+    def not_in(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.NOT_IN, other)
+
+    def prefix_with(self, other: Any):
+        from pycurd.const import QUERY_OP_RELATION
+        return self._condition_expr(QUERY_OP_RELATION.PREFIX, other)
 
 
 class RecordMappingBase:
