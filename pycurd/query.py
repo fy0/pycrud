@@ -1,12 +1,13 @@
 import dataclasses
 import json
 from dataclasses import dataclass, field
-from typing import List, Union, Set, Dict, Any, Type
+from typing import List, Union, Set, Dict, Any, Type, Mapping
 
 from typing_extensions import Literal
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
-from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn
+from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
+    InvalidOrderSyntax
 from pycurd.types import RecordMapping, RecordMappingField
 
 
@@ -76,7 +77,7 @@ class QueryField:
 @dataclass
 class QueryOrder:
     column: RecordMappingField
-    order: Union[Literal['asc', 'desc']]
+    order: Union[Literal['asc', 'desc', 'default']]
 
     def __eq__(self, other):
         if isinstance(other, QueryOrder):
@@ -85,6 +86,37 @@ class QueryOrder:
 
     def __repr__(self):
         return '<QueryOrder %r.%s>' % (self.column, self.order)
+
+    @classmethod
+    def from_text(cls, table: Type[RecordMapping], text):
+        """
+        :param text: order=id.desc, xxx.asc
+        :return: [
+            [<column>, asc|desc|default],
+            [<column2>, asc|desc|default],
+        ]
+        """
+        orders = []
+        for i in map(str.strip, text.split(',')):
+            items = i.split('.', 2)
+
+            if len(items) == 1:
+                column_name, order = items[0], 'default'
+            elif len(items) == 2:
+                column_name, order = items
+            else:
+                raise InvalidOrderSyntax("Invalid order syntax")
+
+            column = getattr(table, column_name, None)
+            if column is None:
+                raise InvalidOrderSyntax('Unknown column: %s' % column_name)
+
+            order = order.lower()
+            if order not in ('asc', 'desc', 'default'):
+                raise InvalidOrderSyntax('Invalid order mode: %s' % order)
+
+            orders.append(cls(column, order))
+        return orders
 
 
 @dataclass
@@ -214,7 +246,7 @@ class QueryInfo:
     select_exclude: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
 
     conditions: QueryConditions = None
-    order_by: List = field(default_factory=lambda: [])
+    order_by: List[QueryOrder] = field(default_factory=lambda: [])
 
     foreign_keys: Dict[str, 'QueryInfo'] = None
 
@@ -249,7 +281,7 @@ class QueryInfo:
         )
 
     @classmethod
-    def from_json(cls, table, data, from_http_query=False):
+    def from_json(cls, table: Type[RecordMapping], data, from_http_query=False):
         assert table, 'table must be exists'
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
@@ -328,9 +360,18 @@ class QueryInfo:
         for key, value in data.items():
             if key.startswith('$'):
                 if key == '$order-by':
-                    pass
-                elif key == '$foreign-key':
-                    pass
+                    q.order_by = QueryOrder.from_text(table, value)
+                elif key == '$fks' or key == '$foreign-keys':
+                    value = http_value_try_parse(value)
+                    assert isinstance(value, Mapping)
+                    q.foreign_keys = {}
+
+                    for k, v in value.items():
+                        k2 = k[:-2] if k.endswith('[]') else k
+                        t = table.all_mappings.get(k2)
+
+                        if t:
+                            q.foreign_keys[k] = cls.from_json(t, v)
 
                 continue
 

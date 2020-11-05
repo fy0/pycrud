@@ -5,7 +5,7 @@ from functools import reduce
 from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
-from pypika import Query
+from pypika import Query, Order
 from pypika.functions import Count
 from pypika.terms import ComplexCriterion, Parameter
 
@@ -265,7 +265,13 @@ class SQLCrud(BaseCrud):
 
         # 一些限制
         if info.order_by:
-            q = q.orderby(info.order_by)
+            order_dict = {
+                'default': None,
+                'desc': Order.desc,
+                'asc': Order.asc
+            }
+            for i in info.order_by:
+                q = q.orderby(i.column.name, order=order_dict[i.order])
         if info.limit != -1:
             q = q.limit(info.limit)
         q = q.offset(info.offset)

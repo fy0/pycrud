@@ -23,5 +23,9 @@ class UnknownQueryOperator(PyCrudException):
     pass
 
 
+class InvalidOrderSyntax(PyCrudException):
+    pass
+
+
 class UnsupportedQueryOperator(PyCrudException):
     pass
