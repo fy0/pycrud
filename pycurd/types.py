@@ -4,7 +4,7 @@ from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callabl
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
-from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.crud.query_result_row import QueryResultRowList
 from pycurd.utils.cls_property import classproperty
 from pycurd.utils.name_helper import camel_case_to_underscore_case
 
@@ -121,7 +121,7 @@ class RecordMappingBase:
     async def on_read(
             cls,
             info: 'QueryInfo',
-            when_complete: List[Callable[[List[QueryResultRow]], Awaitable]],
+            when_complete: List[Callable[[QueryResultRowList], Awaitable]],
             perm: 'PermInfo' = None
     ):
         """

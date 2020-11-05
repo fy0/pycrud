@@ -60,7 +60,7 @@ class PeeweeCrud(SQLCrud):
             if sql.startswith('INSERT INTO'):
                 if isinstance(self.db, peewee.PostgresqlDatabase):
                     sql += ' RETURNING id'
-                    r = await self.db.execute_sql(sql, phg.values)
+                    r = self.db.execute_sql(sql, phg.values)
                     return SQLExecuteResult(r.fetchone()[0])
             return self.db.execute_sql(sql, phg.values)
         except Exception as e:

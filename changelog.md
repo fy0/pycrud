@@ -1,4 +1,11 @@
 
+### 0.1.9 update 2020.11.06
+
+* Fixed: peewee execute_sql
+
+* Fixed: QueryResultRow.to_dict() failed
+
+
 ### 0.1.8 update 2020.11.05
 
 * Added: simple dsl

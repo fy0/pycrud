@@ -25,7 +25,7 @@ class QueryResultRow:
             data = {}
             for i, j in zip(self.info.select_for_curd, self.raw_data):
                 if i.table == self.base:
-                    data[i] = j
+                    data[i.name] = j
 
             if self.extra:
                 ex = {}
