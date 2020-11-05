@@ -1,4 +1,9 @@
 
+### 0.1.10 update 2020.11.06
+
+* Added: $order-by supported
+
+
 ### 0.1.9 update 2020.11.06
 
 * Fixed: peewee execute_sql
