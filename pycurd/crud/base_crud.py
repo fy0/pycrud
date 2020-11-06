@@ -49,7 +49,9 @@ class BaseCrud(CoreCrud, ABC):
 
             def sub_solve_items(items):
                 if items:
-                    return [solve_condition(x) for x in items if x is not None]
+                    r = [solve_condition(x) for x in items if x is not None]
+                    # solve_condition 返回值仍有 None 的可能
+                    return [x for x in r if x is not None]
                 return []
 
             def solve_condition(c):

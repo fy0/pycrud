@@ -140,6 +140,7 @@ class SQLCrud(BaseCrud):
         await info.from_table.on_update(info, values, when_before_update, when_complete, _perm)
 
         model = self.mapping2model[info.from_table]
+        tc = self._table_cache[info.from_table]
         qi = info.clone()
         qi.select = []
         lst = await self.get_list(qi)
@@ -152,7 +153,7 @@ class SQLCrud(BaseCrud):
         phg = self.get_placeholder_generator()
         sql = Query().update(model)
         for k, v in values.items():
-            sql = sql.set(k, phg.next(v))
+            sql = sql.set(k, phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields']))
 
         # 注意：生成的SQL顺序和values顺序的对应关系
         sql = sql.where(model.id.isin(phg.next(id_lst)))

@@ -1,4 +1,11 @@
 
+### 0.1.12 update 2020.11.07
+
+* Fixed: update failed for array/json fields
+
+* Fixed: solve_condition 500
+
+
 ### 0.1.11 update 2020.11.06
 
 * Added: pydantic type `HexString`, read hex string, output bytes
