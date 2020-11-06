@@ -1,5 +1,10 @@
 
-### 0.1.12 update 2020.11.07
+### 0.1.13 update 2020.11.06
+
+* Fixed: contains operator
+
+
+### 0.1.12 update 2020.11.06
 
 * Fixed: update failed for array/json fields
 

@@ -312,7 +312,7 @@ class QueryInfo:
 
             return selected, unselected
 
-        def parse_value(_key, field_name, value, *, is_list=False):
+        def parse_value(_key, field_name, value, *, is_in=False, is_contains=False):
             value = http_value_try_parse(value)
 
             if check_cond_with_field:
@@ -323,7 +323,7 @@ class QueryInfo:
 
             model_field = table.__fields__.get(field_name)
 
-            if is_list:
+            if is_in:
                 assert isinstance(value, List), 'The right value of relation operator must be list'
                 final_value = []
                 for i in value:
@@ -362,11 +362,12 @@ class QueryInfo:
                     if op is None:
                         raise UnknownQueryOperator(op_name)
 
-                    is_list = op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS)
+                    is_in = op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN)
+                    is_contains = op == QUERY_OP_RELATION.CONTAINS
 
                     try:
                         field_ = getattr(table, field_name)
-                        value = parse_value(key, field_name, value, is_list=is_list)
+                        value = parse_value(key, field_name, value, is_in=is_in, is_contains=is_contains)
                         conditions.append(ConditionExpr(field_, op, value))
                     except AttributeError:
                         raise InvalidQueryConditionColumn("column not exists: %s" % field_name)
@@ -399,6 +400,3 @@ class QueryInfo:
                 # _parse__condition(field_name, op, value)
 
         return q
-
-    def to_json(self):
-        raise NotImplemented

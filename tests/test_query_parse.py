@@ -97,3 +97,31 @@ def test_condition_logic_failed_1(key):
         }
     })
     assert len(q.conditions.items) == 0
+
+
+def test_condition_simple_from_http():
+    q = QueryInfo.from_json(User, {
+        'nickname.eq': '"test"'
+    }, from_http_query=True)
+    cond = q.conditions.items[0]
+    assert cond.column == User.nickname
+    assert cond.op == QUERY_OP_COMPARE.EQ
+    assert cond.value == 'test'
+
+
+def test_condition_simple2_from_http():
+    q = QueryInfo.from_json(User, {
+        'test.eq': '"111"'
+    }, from_http_query=True)
+    cond = q.conditions.items[0]
+    assert cond.column == User.test
+    assert cond.op == QUERY_OP_COMPARE.EQ
+    assert cond.value == 111
+
+    q = QueryInfo.from_json(User, {
+        'test.eq': '222'
+    }, from_http_query=True)
+    cond = q.conditions.items[0]
+    assert cond.column == User.test
+    assert cond.op == QUERY_OP_COMPARE.EQ
+    assert cond.value == 222
