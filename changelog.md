@@ -1,4 +1,9 @@
 
+### 0.1.11 update 2020.11.06
+
+* Added: pydantic type `HexString`, read hex string, output bytes
+
+
 ### 0.1.10 update 2020.11.06
 
 * Added: $order-by supported

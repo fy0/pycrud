@@ -3,6 +3,8 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Union, Set, Dict, Any, Type, Mapping
 
+from pydantic import Field
+from pydantic.fields import ModelField
 from typing_extensions import Literal
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
@@ -281,7 +283,7 @@ class QueryInfo:
         )
 
     @classmethod
-    def from_json(cls, table: Type[RecordMapping], data, from_http_query=False):
+    def from_json(cls, table: Type[RecordMapping], data, from_http_query=False, check_cond_with_field=False):
         assert table, 'table must be exists'
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
@@ -310,12 +312,31 @@ class QueryInfo:
 
             return selected, unselected
 
-        def parse_value(val):
-            if isinstance(val, str) and val.startswith('$'):
-                a, b = val.split(':', 1)
-                t = RecordMapping.all_mappings.get(a[1:])
-                return getattr(t, b)
-            return val
+        def parse_value(_key, field_name, value, *, is_list=False):
+            value = http_value_try_parse(value)
+
+            if check_cond_with_field:
+                if isinstance(value, str) and value.startswith('$'):
+                    a, b = value.split(':', 1)
+                    t = RecordMapping.all_mappings.get(a[1:])
+                    return getattr(t, b)
+
+            model_field = table.__fields__.get(field_name)
+
+            if is_list:
+                assert isinstance(value, List), 'The right value of relation operator must be list'
+                final_value = []
+                for i in value:
+                    val, err = model_field.validate(i, None, loc=_key)
+                    if err:
+                        raise InvalidQueryConditionValue('invalid value: %s' % value)
+                    final_value.append(val)
+            else:
+                final_value, err = model_field.validate(value, None, loc=_key)
+                if err:
+                    raise InvalidQueryConditionValue('invalid value: %s' % value)
+
+            return final_value
 
         def parse_conditions(data):
             conditions = []
@@ -336,18 +357,16 @@ class QueryInfo:
 
                 elif '.' in key:
                     field_name, op_name = key.split('.', 1)
-                    value = http_value_try_parse(value)
 
                     op = QUERY_OP_FROM_TXT.get(op_name)
                     if op is None:
                         raise UnknownQueryOperator(op_name)
 
-                    if op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS):
-                        value = http_value_try_parse(value)
-                        assert isinstance(value, List), 'The right value of relation operator must be list'
+                    is_list = op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN, QUERY_OP_RELATION.CONTAINS)
 
                     try:
                         field_ = getattr(table, field_name)
+                        value = parse_value(key, field_name, value, is_list=is_list)
                         conditions.append(ConditionExpr(field_, op, value))
                     except AttributeError:
                         raise InvalidQueryConditionColumn("column not exists: %s" % field_name)
@@ -371,7 +390,7 @@ class QueryInfo:
                         t = table.all_mappings.get(k2)
 
                         if t:
-                            q.foreign_keys[k] = cls.from_json(t, v)
+                            q.foreign_keys[k] = cls.from_json(t, v, check_cond_with_field)
 
                 continue
 

@@ -1,6 +1,6 @@
 # pycrud
 
-[![codecov](https://codecov.io/gh/fy0/querylayer/branch/master/graph/badge.svg)](https://codecov.io/gh/fy0/pycrud)
+[![codecov](https://codecov.io/gh/fy0/pycrud/branch/master/graph/badge.svg)](https://codecov.io/gh/fy0/pycrud)
 
 A common crud framework for web.
 

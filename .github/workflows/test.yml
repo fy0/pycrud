@@ -25,5 +25,5 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest tests --cov querylayer --ignore examples
+        pytest tests --cov pycrud --ignore examples
         bash <(curl -s https://codecov.io/bash)
