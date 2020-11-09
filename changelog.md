@@ -1,4 +1,11 @@
 
+### 0.1.16 update 2020.11.09
+
+* Changed: default dumps function for crud object
+
+* Fixed: allow_delete can be inherit now.
+
+
 ### 0.1.15 update 2020.11.09
 
 * Added: memoryview supported for blob field

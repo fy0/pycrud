@@ -76,3 +76,8 @@ async def test_bytes_query_memoryview():
     ret = await c.get_list(info)
     assert ret[0].to_dict()['token'] == b'abcd'
     assert len(ret) == TestModel.select().count()
+
+
+async def test_bytes_serializable():
+    _, c, _ = crud_db_init()
+    assert c.json_dumps_func(b'\x11\x22') == '"1122"'

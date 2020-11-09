@@ -94,7 +94,7 @@ class SQLCrud(BaseCrud):
     mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
 
     def __post_init__(self):
-        self.json_dumps_func = json.dumps
+        self.json_dumps_func = json_dumps_ex
         self._table_cache = {
             # 'mapping': {
             #     'array_fields': [],
