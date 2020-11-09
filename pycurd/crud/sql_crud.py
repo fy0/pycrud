@@ -14,6 +14,7 @@ from pycurd.crud.base_crud import BaseCrud
 from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
 from pycurd.types import RecordMapping, RecordMappingField, IDList
+from pycurd.utils.json_ex import json_dumps_ex
 from pycurd.values import ValuesToWrite
 
 _sql_method_map = {
@@ -40,6 +41,7 @@ class PlaceHolderGenerator:
     template: str = '?'  # sqlite
     # template: str = '${count}'  # PostgreSQL
     # template: str = '%s'  # mysql
+    json_dumps_func: Any = json_dumps_ex
 
     def __post_init__(self):
         self.count = 1
@@ -54,7 +56,7 @@ class PlaceHolderGenerator:
         elif left_is_json:
             p = Parameter(self.template.format(count=self.count))
             self.count += 1
-            self.values.append(json.dumps(value))
+            self.values.append(self.json_dumps_func(value))
 
         elif isinstance(value, (List, Set, Tuple)):
             tmpls = []
@@ -92,6 +94,7 @@ class SQLCrud(BaseCrud):
     mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
 
     def __post_init__(self):
+        self.json_dumps_func = json.dumps
         self._table_cache = {
             # 'mapping': {
             #     'array_fields': [],
@@ -153,7 +156,7 @@ class SQLCrud(BaseCrud):
         phg = self.get_placeholder_generator()
         sql = Query().update(model)
         for k, v in values.items():
-            values.array_append
+            # values.array_append
             val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
             sql = sql.set(k, val)
 

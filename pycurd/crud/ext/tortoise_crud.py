@@ -69,7 +69,7 @@ class TortoiseCrud(SQLCrud):
             else:
                 raise Exception('unknown database: %s', conn)
 
-        return PlaceHolderGenerator(self._phg_cache)
+        return PlaceHolderGenerator(self._phg_cache, self.json_dumps_func)
 
     async def execute_sql(self, sql: str, phg: PlaceHolderGenerator):
         from tortoise.transactions import in_transaction

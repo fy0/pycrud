@@ -245,7 +245,7 @@ class QueryInfo:
     from_table: Type[RecordMapping]
 
     select: List[Union[RecordMappingField, Any]] = field(default_factory=lambda: [])
-    select_exclude: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
+    select_exclude: Set[Union[RecordMappingField, Any]] = None
 
     conditions: QueryConditions = None
     order_by: List[QueryOrder] = field(default_factory=lambda: [])
@@ -275,7 +275,7 @@ class QueryInfo:
             select = []
             for i in self.select:
                 if self.select_exclude:
-                    if i not in self.select_exclude:
+                    if i not in set(self.select_exclude):
                         select.append(i)
                 else:
                     select.append(i)
@@ -283,7 +283,7 @@ class QueryInfo:
         return self._select
 
     @classmethod
-    def from_table_raw(cls, table, select=None, where=None):
+    def from_table_raw(cls, table, select=None, where=None, *, select_exclude=None):
         get_items = lambda keys: [getattr(table, x) for x in keys]
         if select is None:
             select = get_items(table.record_fields.keys())
@@ -291,6 +291,7 @@ class QueryInfo:
         return QueryInfo(
             table,
             select=select,
+            select_exclude=select_exclude,
             conditions=QueryConditions(where) if where else None
         )
 
@@ -318,7 +319,7 @@ class QueryInfo:
 
             if unselect_text is not None:
                 unselected_columns = list(filter(lambda x: x, map(str.strip, unselect_text.split(','))))
-                unselected = get_items(unselected_columns)
+                unselected = set(get_items(unselected_columns))
             else:
                 unselected = None
 
@@ -386,6 +387,11 @@ class QueryInfo:
                     try:
                         field_ = getattr(table, field_name)
                         value = parse_value(key, field_name, value, is_in=is_in, is_contains=is_contains)
+
+                        if is_contains:
+                            if not isinstance(value, List):
+                                raise InvalidQueryConditionValue('right value of contains should be list: %s' % value)
+
                         conditions.append(ConditionExpr(field_, op, value))
                     except AttributeError:
                         raise InvalidQueryConditionColumn("column not exists: %s" % field_name)

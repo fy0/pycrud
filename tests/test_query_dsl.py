@@ -1,8 +1,4 @@
-import re
 from typing import Any, Union
-
-import pytest
-from dataclasses import dataclass
 
 from pycurd.const import QUERY_OP_COMPARE
 from pycurd.query import QueryInfo, ConditionLogicExpr, QueryConditions

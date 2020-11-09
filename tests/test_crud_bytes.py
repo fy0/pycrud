@@ -3,19 +3,17 @@ from typing import Optional
 import peewee
 import pytest
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
+from pycurd.pydantic_ext.hex_string import HexString
 from pycurd.query import QueryInfo, QueryConditions, ConditionExpr
 from pycurd.types import RecordMapping
-from pycurd.values import ValuesToWrite
 
 pytestmark = [pytest.mark.asyncio]
 
 
 class ATest(RecordMapping):
     id: Optional[int]
-    token: bytes
+    token: HexString
 
 
 def crud_db_init():
@@ -61,6 +59,18 @@ async def test_bytes_query():
 
     info = QueryInfo.from_json(ATest, {
         'token.eq': b'abcd'
+    })
+
+    ret = await c.get_list(info)
+    assert ret[0].to_dict()['token'] == b'abcd'
+    assert len(ret) == TestModel.select().count()
+
+
+async def test_bytes_query_memoryview():
+    db, c, TestModel = crud_db_init()
+
+    info = QueryInfo.from_json(ATest, {
+        'token.eq': memoryview(b'abcd')
     })
 
     ret = await c.get_list(info)

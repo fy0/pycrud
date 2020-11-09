@@ -7,7 +7,7 @@ import typing
 
 from pycurd.types import RecordMapping
 from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
-from pycurd.error import DBException
+from pycurd.error import DBException, UnknownDatabaseException
 
 if typing.TYPE_CHECKING:
     import peewee
@@ -42,17 +42,22 @@ class PeeweeCrud(SQLCrud):
             if inspect.isclass(v) and issubclass(v, peewee.Model):
                 self.mapping2model[k] = pypika.Table(v._meta.table_name)
 
-    def get_placeholder_generator(self) -> PlaceHolderGenerator:
-        import peewee
+        self._phg_cache = None
 
-        if isinstance(self.db, peewee.SqliteDatabase):
-            return PlaceHolderGenerator('?')
-        elif isinstance(self.db, peewee.PostgresqlDatabase):
-            return PlaceHolderGenerator('%s')
-        elif isinstance(self.db, peewee.MySQLDatabase):
-            return PlaceHolderGenerator('%s')
-        else:
-            raise Exception('unknown database: %s', self.db)
+    def get_placeholder_generator(self) -> PlaceHolderGenerator:
+        if self._phg_cache is None:
+            import peewee
+
+            if isinstance(self.db, peewee.SqliteDatabase):
+                self._phg_cache = '?'
+            elif isinstance(self.db, peewee.PostgresqlDatabase):
+                self._phg_cache = '%s'
+            elif isinstance(self.db, peewee.MySQLDatabase):
+                self._phg_cache = '%s'
+            else:
+                raise UnknownDatabaseException('unknown database: %s', self.db)
+
+        return PlaceHolderGenerator(self._phg_cache, self.json_dumps_func)
 
     async def execute_sql(self, sql: str, phg: PlaceHolderGenerator):
         import peewee

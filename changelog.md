@@ -1,4 +1,11 @@
 
+### 0.1.15 update 2020.11.09
+
+* Added: memoryview supported for blob field
+
+* Fixed: $select- fix
+
+
 ### 0.1.14 update 2020.11.09
 
 * Fixed: $select- now works
