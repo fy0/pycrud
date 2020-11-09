@@ -1,7 +1,8 @@
 import pytest
 
 from pycurd.const import QUERY_OP_COMPARE
-from pycurd.query import QueryInfo, ConditionLogicExpr
+from pycurd.error import InvalidQueryConditionValue
+from pycurd.query import QueryInfo, ConditionLogicExpr, QueryOrder
 from pycurd.types import RecordMapping
 
 
@@ -11,6 +12,12 @@ class User(RecordMapping):
     username: str
     password: str
     test: int = 1
+
+
+class Topic(RecordMapping):
+    id: int
+    title: str
+    user_id: int
 
 
 def test_select_simple():
@@ -125,3 +132,44 @@ def test_condition_simple2_from_http():
     assert cond.column == User.test
     assert cond.op == QUERY_OP_COMPARE.EQ
     assert cond.value == 222
+
+
+def test_parse_order_by():
+    q = QueryInfo.from_json(User, {
+        '$order-by': 'id, username.desc, test'
+    })
+    assert q.order_by == [QueryOrder(User.id), QueryOrder(User.username, 'desc'), QueryOrder(User.test)]
+
+
+def test_parse_foreignkey_column_not_exists():
+    with pytest.raises(InvalidQueryConditionValue) as e:
+        QueryInfo.from_json(User, {
+            '$fks': {'topic': {'id.eq': '$user:xxxx'}}
+        })
+        assert '$user:xxxx' in e.value
+
+
+def test_parse_foreignkey():
+    with pytest.raises(InvalidQueryConditionValue):
+        QueryInfo.from_json(User, {
+            '$fks': {'topic': {'id.eq': '$user.id'}}
+        })
+
+    q = QueryInfo.from_json(User, {
+        '$fks': {'topic': {
+            '$select': 'id, title, user_id',
+            'user_id.eq': '$user:id'
+        }}
+    })
+
+    assert 'topic' in q.foreign_keys
+
+    t = q.foreign_keys['topic']
+    assert t.from_table == Topic
+    assert t.select == [Topic.id, Topic.title, Topic.user_id]
+    assert len(t.conditions.items) == 1
+
+    c = t.conditions.items[0]
+    assert c.column == Topic.user_id
+    assert c.op == QUERY_OP_COMPARE.EQ
+    assert c.value == User.id

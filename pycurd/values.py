@@ -2,6 +2,8 @@ from typing import Mapping, TYPE_CHECKING, Type, Dict
 
 from multidict import MultiDict
 
+from pycurd.error import InvalidQueryConditionValue, InvalidQueryValue
+
 if TYPE_CHECKING:
     from pycurd.types import RecordMapping
 
@@ -65,22 +67,6 @@ class ValuesToWrite(dict):
         for k, v in self.items():
             if k.startswith('$'):
                 continue
-            elif '.' in k:
-                # TODO: 不允许 incr 和普通赋值同时出现
-                k, op = k.rsplit('.', 1)
-                if op == 'incr':
-                    self.incr_fields.add(k)
-                elif op == 'decr':
-                    self.decr_fields.add(k)
-                elif op == 'set_add':
-                    self.set_add_fields.add(k)
-                elif op == 'set_remove':
-                    self.set_remove_fields.add(k)
-                # elif op == 'array_append':
-                #     self.array_append.add(k)
-                # elif op == 'array_remove':
-                #    self.array_remove.add(k)
-
             final[k] = v
 
         if check_insert:
@@ -88,7 +74,46 @@ class ValuesToWrite(dict):
             self.clear()
             self.update(ret.dict(exclude_unset=False, exclude_none=True))
         else:
-            ret = table.partial_model.parse_obj(final)
+            rest = {}
+            final2 = {}
+
+            for k, v in final.items():
+                if '.' in k:
+                    _k, op = k.rsplit('.', 1)
+                    flag = True
+
+                    if op == 'incr':
+                        flag = False
+                        self.incr_fields.add(k)
+                    elif op == 'decr':
+                        flag = False
+                        self.decr_fields.add(k)
+
+                    elif op == 'set_add':
+                        flag = False
+                        self.set_add_fields.add(k)
+                    elif op == 'set_remove':
+                        flag = False
+                        self.set_remove_fields.add(k)
+                    # elif op == 'array_append':
+                    #     self.array_append.add(k)
+                    # elif op == 'array_remove':
+                    #    self.array_remove.add(k)
+
+                    if flag:
+                        model_field = table.partial_model.__fields__.get('key')
+                        val, err = model_field.validate([v], None, loc=k)
+                        if err:
+                            raise InvalidQueryValue('invalid value: %s' % v)
+
+                        rest[_k] = val[0]
+                        continue
+
+                    k = _k
+
+                final2[k] = v
+
+            ret = table.partial_model.parse_obj(final2)
             self.clear()
             self.update(ret.dict(include=ret.__fields_set__))
 

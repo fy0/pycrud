@@ -153,7 +153,9 @@ class SQLCrud(BaseCrud):
         phg = self.get_placeholder_generator()
         sql = Query().update(model)
         for k, v in values.items():
-            sql = sql.set(k, phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields']))
+            values.array_append
+            val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
+            sql = sql.set(k, val)
 
         # 注意：生成的SQL顺序和values顺序的对应关系
         sql = sql.where(model.id.isin(phg.next(id_lst)))
@@ -232,10 +234,19 @@ class SQLCrud(BaseCrud):
                         contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS,
                                                      QUERY_OP_RELATION.CONTAINS_ANY)
 
-                        value = [c.value] if c.op == QUERY_OP_RELATION.CONTAINS_ANY else c.value
-                        real_value = phg.next(value, contains_relation=contains_relation)
+                        # value = [c.value] if c.op == QUERY_OP_RELATION.CONTAINS_ANY else c.value
+                        if c.op in (QUERY_OP_RELATION.PREFIX, QUERY_OP_RELATION.IPREFIX):
+                            # TODO: 更好的安全机制，防止利用like语句
+                            c.value = c.value.replace('%', '')
+                            c.value = c.value + '%'
+                        real_value = phg.next(c.value, contains_relation=contains_relation)
 
-                    cond = getattr(field, _sql_method_map[c.op])(real_value)
+                    if c.op == QUERY_OP_RELATION.PREFIX:
+                        cond = field.like(real_value)
+                    elif c.op == QUERY_OP_RELATION.IPREFIX:
+                        cond = field.ilike(real_value)
+                    else:
+                        cond = getattr(field, _sql_method_map[c.op])(real_value)
                     return cond
 
             if info.join:

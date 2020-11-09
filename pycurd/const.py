@@ -21,6 +21,7 @@ class QUERY_OP_RELATION(Enum):
     IS = ('is',)
     IS_NOT = ('isnot', 'is not')
     PREFIX = ('prefix',)  # string like only
+    IPREFIX = ('iprefix',)  # string like only
     CONTAINS = ('contains',)  # ArrayField only
     CONTAINS_ANY = ('contains_any',)  # ArrayField only
 

@@ -23,6 +23,10 @@ class UnknownQueryOperator(PyCrudException):
     pass
 
 
+class InvalidQueryValue(PyCrudException):
+    pass
+
+
 class InvalidOrderSyntax(PyCrudException):
     pass
 

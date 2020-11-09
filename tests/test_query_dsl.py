@@ -9,7 +9,6 @@ from pycurd.query import QueryInfo, ConditionLogicExpr, QueryConditions
 from pycurd.types import RecordMapping, RecordMappingField
 
 
-@dataclass
 class User(RecordMapping):
     id: int
     nickname: str

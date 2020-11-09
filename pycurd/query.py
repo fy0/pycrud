@@ -79,7 +79,7 @@ class QueryField:
 @dataclass
 class QueryOrder:
     column: RecordMappingField
-    order: Union[Literal['asc', 'desc', 'default']]
+    order: Union[Literal['asc', 'desc', 'default']] = 'default'
 
     def __eq__(self, other):
         if isinstance(other, QueryOrder):
@@ -258,6 +258,9 @@ class QueryInfo:
     join: List[QueryJoinInfo] = None
     select_hidden: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
 
+    def __post_init__(self):
+        self._select = None
+
     def clone(self):
         # TODO: it's shallow copy
         return dataclasses.replace(self)
@@ -268,7 +271,16 @@ class QueryInfo:
 
     @property
     def select_for_curd(self):
-        return self.select
+        if self._select is None:
+            select = []
+            for i in self.select:
+                if self.select_exclude:
+                    if i not in self.select_exclude:
+                        select.append(i)
+                else:
+                    select.append(i)
+            self._select = select
+        return self._select
 
     @classmethod
     def from_table_raw(cls, table, select=None, where=None):
@@ -317,9 +329,15 @@ class QueryInfo:
 
             if check_cond_with_field:
                 if isinstance(value, str) and value.startswith('$'):
-                    a, b = value.split(':', 1)
-                    t = RecordMapping.all_mappings.get(a[1:])
-                    return getattr(t, b)
+                    if ':' in value:
+                        a, b = value.split(':', 1)
+                        t = RecordMapping.all_mappings.get(a[1:])
+                        try:
+                            return getattr(t, b)
+                        except AttributeError:
+                            raise InvalidQueryConditionValue("column not exists: %s" % value)
+                    else:
+                        raise InvalidQueryConditionValue('invalid value: %s, example: "$user:id"' % value)
 
             model_field = table.__fields__.get(field_name)
 
@@ -363,7 +381,7 @@ class QueryInfo:
                         raise UnknownQueryOperator(op_name)
 
                     is_in = op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN)
-                    is_contains = op == QUERY_OP_RELATION.CONTAINS
+                    is_contains = op in (QUERY_OP_RELATION.CONTAINS, QUERY_OP_RELATION.CONTAINS_ANY)
 
                     try:
                         field_ = getattr(table, field_name)
@@ -391,7 +409,7 @@ class QueryInfo:
                         t = table.all_mappings.get(k2)
 
                         if t:
-                            q.foreign_keys[k] = cls.from_json(t, v, check_cond_with_field)
+                            q.foreign_keys[k] = cls.from_json(t, v, check_cond_with_field=True)
 
                 continue
 

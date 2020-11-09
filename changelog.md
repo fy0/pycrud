@@ -1,4 +1,13 @@
 
+### 0.1.14 update 2020.11.09
+
+* Fixed: $select- now works
+
+* Fixed: prefix operator
+
+* Fixed: contains_any operator
+
+
 ### 0.1.13 update 2020.11.06
 
 * Fixed: contains operator

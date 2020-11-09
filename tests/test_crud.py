@@ -150,6 +150,21 @@ async def test_curd_read_2():
     assert len(ret) == 1
 
 
+async def test_curd_read_by_prefix():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+
+    c = PeeweeCrud(None, {
+        User: MUsers
+    }, db)
+
+    n = QueryInfo.from_json(User, {
+        'username.prefix': 'test4'
+    })
+
+    ret = await c.get_list(n)
+    assert ret[0].to_dict()['username'] == 'test4'
+
+
 async def test_curd_read_with_count():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
