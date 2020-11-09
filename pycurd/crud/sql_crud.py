@@ -15,7 +15,7 @@ from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
 from pycurd.types import RecordMapping, RecordMappingField, IDList
 from pycurd.utils.json_ex import json_dumps_ex
-from pycurd.values import ValuesToWrite
+from pycurd.values import ValuesToWrite, ValuesDataFlag
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -156,9 +156,25 @@ class SQLCrud(BaseCrud):
         phg = self.get_placeholder_generator()
         sql = Query().update(model)
         for k, v in values.items():
-            # values.array_append
+            vflag = values.data_flag.get(k)
+
             val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
-            sql = sql.set(k, val)
+
+            if vflag:
+                if vflag == ValuesDataFlag.INCR:
+                    sql = sql.set(k, f'{k} + {val}')
+                elif vflag == ValuesDataFlag.DECR:
+                    sql = sql.set(k, f'{k} - {val}')
+                elif vflag == ValuesDataFlag.ARRAY_EXTEND:
+                    sql = sql.set(k, f'{k} || {val}')
+                elif vflag == ValuesDataFlag.ARRAY_PRUNE:
+                    sql = sql.set(k, f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))')
+                elif vflag == ValuesDataFlag.ARRAY_EXTEND_DISTINCT:
+                    sql = sql.set(k, f'array_agg(DISTINCT ({k} || {val})')
+                elif vflag == ValuesDataFlag.ARRAY_PRUNE_DISTINCT:
+                    sql = sql.set(k, f'array_agg(DISTINCT array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))')
+            else:
+                sql = sql.set(k, val)
 
         # 注意：生成的SQL顺序和values顺序的对应关系
         sql = sql.where(model.id.isin(phg.next(id_lst)))
