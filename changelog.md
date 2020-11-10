@@ -5,6 +5,8 @@
 
 * Added: QueryInfo.from_json multiple same operator supported
 
+* Added: invalid `on_event` define will cause Exception
+
 
 ### 0.2.1 update 2020.11.10
 
