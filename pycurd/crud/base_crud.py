@@ -119,7 +119,7 @@ class BaseCrud(CoreCrud, ABC):
                 del values[j]
 
         try:
-            values.bind(True, table=info.from_table)
+            values.bind(False, table=info.from_table)
         except pydantic.ValidationError:
             # TODO: 权限检查之后过不了检验的后面再处置
             pass

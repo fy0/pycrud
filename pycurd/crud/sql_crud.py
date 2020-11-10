@@ -138,7 +138,7 @@ class SQLCrud(BaseCrud):
 
     async def update(self, info: QueryInfo, values: ValuesToWrite, *, _perm=None) -> IDList:
         # hook
-        await info.from_table.on_query(info)
+        await info.from_table.on_query(info, _perm)
         when_before_update, when_complete = [], []
         await info.from_table.on_update(info, values, when_before_update, when_complete, _perm)
 
@@ -146,7 +146,7 @@ class SQLCrud(BaseCrud):
         tc = self._table_cache[info.from_table]
         qi = info.clone()
         qi.select = []
-        lst = await self.get_list(qi)
+        lst = await self.get_list(qi, _perm=_perm)
         id_lst = [x.id for x in lst]
 
         for i in when_before_update:
@@ -176,7 +176,7 @@ class SQLCrud(BaseCrud):
 
         qi = info.clone()
         qi.select = []
-        lst = await self.get_list(qi)
+        lst = await self.get_list(qi, _perm=_perm)
 
         # 选择项
         id_lst = [x.id for x in lst]
@@ -195,7 +195,7 @@ class SQLCrud(BaseCrud):
 
     async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> QueryResultRowList:
         # hook
-        await info.from_table.on_query(info)
+        await info.from_table.on_query(info, _perm)
         when_complete = []
         await info.from_table.on_read(info, when_complete, _perm)
 
