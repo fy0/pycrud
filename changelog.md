@@ -1,4 +1,9 @@
 
+### 0.1.17 update 2020.11.10
+
+* Added: try to add unary operator for values
+
+
 ### 0.1.16 update 2020.11.09
 
 * Changed: default dumps function for crud object

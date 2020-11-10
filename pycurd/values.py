@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Mapping, TYPE_CHECKING, Type, Dict
 
 from multidict import MultiDict
@@ -8,20 +9,23 @@ if TYPE_CHECKING:
     from pycurd.types import RecordMapping
 
 
+class ValuesDataFlag(Enum):
+    INCR = 'incr'
+    DECR = 'decr'
+
+    ARRAY_EXTEND = 'array_extend'
+    ARRAY_PRUNE = 'array_prune'
+
+    ARRAY_EXTEND_DISTINCT = 'array_extend_distinct'
+    ARRAY_PRUNE_DISTINCT = 'array_prune_distinct'
+
+
 class ValuesToWrite(dict):
     def __init__(self, raw_data=None, table: Type['RecordMapping'] = None, try_parse=False):
         super().__init__()
         self.table = table
 
-        # design of incr/desc:
-        # 1. incr/desc/normal_set can't be appear in the same time
-        # 2. incr/desc use self to store data
-        self.incr_fields = set()
-        self.decr_fields = set()
-        self.set_add_fields = set()
-        self.set_remove_fields = set()
-        self.array_append = set()
-        self.array_remove = set()
+        self.data_flag: Dict[str, ValuesDataFlag] = {}
 
         if raw_data:
             assert isinstance(raw_data, Mapping)
@@ -52,13 +56,7 @@ class ValuesToWrite(dict):
             return dict(data)
 
     def try_bind(self, table=None):
-        table = table or self.table
-        ret = table.partial_model.parse_obj(self)
-
-        for i in ret.__fields_set__:
-            self[i] = getattr(ret, i)
-
-        return self
+        self.bind(table=table)
 
     def bind(self, check_insert=False, table=None):
         table = table or self.table
@@ -74,40 +72,21 @@ class ValuesToWrite(dict):
             self.clear()
             self.update(ret.dict(exclude_unset=False, exclude_none=True))
         else:
-            rest = {}
             final2 = {}
 
             for k, v in final.items():
                 if '.' in k:
                     _k, op = k.rsplit('.', 1)
-                    flag = True
+                    if _k in final:
+                        raise Exception('duplicated keys: %r, %r' % (k, _k))
+                    if _k in self.data_flag:
+                        raise Exception('duplicated keys: %r, %r' % (k, f'{_k}.{self.data_flag[_k]}'))
 
-                    if op == 'incr':
-                        flag = False
-                        self.incr_fields.add(k)
-                    elif op == 'decr':
-                        flag = False
-                        self.decr_fields.add(k)
-
-                    elif op == 'set_add':
-                        flag = False
-                        self.set_add_fields.add(k)
-                    elif op == 'set_remove':
-                        flag = False
-                        self.set_remove_fields.add(k)
-                    # elif op == 'array_append':
-                    #     self.array_append.add(k)
-                    # elif op == 'array_remove':
-                    #    self.array_remove.add(k)
-
+                    flag = ValuesDataFlag._value2member_map_.get(op)
                     if flag:
-                        model_field = table.partial_model.__fields__.get('key')
-                        val, err = model_field.validate([v], None, loc=k)
-                        if err:
-                            raise InvalidQueryValue('invalid value: %s' % v)
-
-                        rest[_k] = val[0]
-                        continue
+                        self.data_flag[_k] = flag
+                    else:
+                        raise InvalidQueryConditionValue('unknown unary operator: %s' % k)
 
                     k = _k
 
