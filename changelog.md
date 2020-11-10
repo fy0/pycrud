@@ -1,5 +1,5 @@
 
-### 0.1.19 update 2020.11.10
+### 0.2.0 update 2020.11.10
 
 * Added: `is_` and `is_not` for field
 
