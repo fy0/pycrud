@@ -1,4 +1,13 @@
 
+### 0.1.18 update 2020.11.10
+
+* Fixed: update filled all default values
+
+* Fixed: perm lost bug
+
+* Fixed: try_bind fix
+
+
 ### 0.1.17 update 2020.11.10
 
 * Added: try to add unary operator for values

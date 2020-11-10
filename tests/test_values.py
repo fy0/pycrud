@@ -26,3 +26,11 @@ def test_values_array_extend():
         'arr.array_extend': ['aa', 'bb']
     }, table=User, try_parse=True)
     assert v.data_flag['arr'] == ValuesDataFlag.ARRAY_EXTEND
+
+
+def test_values_try_bind():
+    v = ValuesToWrite({
+        'aaa': 'bbb',
+        'arr.array_extend': ['aa', 'bb']
+    }, table=User, try_parse=True)
+    assert v['aaa'] == 'bbb'

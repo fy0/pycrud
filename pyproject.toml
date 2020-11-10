@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycurd"
-version = "0.1.17"
+version = "0.1.18"
 description = "A common crud framework for web."
 authors = ["fy <fy0748@gmail.com>"]
 

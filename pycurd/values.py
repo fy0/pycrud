@@ -56,7 +56,20 @@ class ValuesToWrite(dict):
             return dict(data)
 
     def try_bind(self, table=None):
-        self.bind(table=table)
+        """
+        试图进行绑定，但不进行过滤（只检查值类型）
+        :param table:
+        :return:
+        """
+        bak = self.copy()
+        self.bind(check_insert=False, table=table)
+        for i in bak.keys() - self.keys():
+            if '.' in i:
+                a, b = i.split('.', 1)
+                if a in self:
+                    continue
+            self[i] = bak[i]
+        return self
 
     def bind(self, check_insert=False, table=None):
         table = table or self.table
