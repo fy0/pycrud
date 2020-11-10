@@ -1,4 +1,11 @@
 
+### 0.1.19 update 2020.11.10
+
+* Added: `is_` and `is_not` for field
+
+* Added: unary operator for values: `array_extend` `array_extend_distinct` `array_prune_distinct`
+
+
 ### 0.1.18 update 2020.11.10
 
 * Fixed: update filled all default values

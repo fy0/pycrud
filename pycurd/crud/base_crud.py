@@ -20,6 +20,9 @@ class PermInfo:
     user: Any
     role: 'RoleDefine'
 
+    def __bool__(self):
+        return self.is_check
+
 
 @dataclass
 class BaseCrud(CoreCrud, ABC):
@@ -84,8 +87,11 @@ class BaseCrud(CoreCrud, ABC):
         return info
 
     async def insert_many_with_perm(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite],
-                                    returning=False, *, perm: PermInfo) -> Union[IDList, List[QueryResultRow]]:
+                                    returning=False, *, perm: PermInfo = None) -> Union[IDList, List[QueryResultRow]]:
         values_list_new = []
+
+        if perm is None:
+            perm = PermInfo(False, None, None)
 
         if perm.is_check:
             avail = perm.role.get_perm_avail(table, A.CREATE)
@@ -111,7 +117,10 @@ class BaseCrud(CoreCrud, ABC):
         return lst
 
     async def update_with_perm(self, info: QueryInfo, values: ValuesToWrite, returning=False,
-                               *, perm: PermInfo) -> Union[List[Any], List[QueryResultRow]]:
+                               *, perm: PermInfo = None) -> Union[List[Any], List[QueryResultRow]]:
+        if perm is None:
+            perm = PermInfo(False, None, None)
+
         if perm.is_check:
             avail = perm.role.get_perm_avail(info.from_table, A.UPDATE)
 
@@ -135,7 +144,9 @@ class BaseCrud(CoreCrud, ABC):
 
         return lst
 
-    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfo) -> int:
+    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfo=None) -> int:
+        if perm is None:
+            perm = PermInfo(False, None, None)
         if perm.is_check:
             if not perm.role.can_delete(info.from_table):
                 raise PermissionException('delete', info.from_table)
@@ -143,11 +154,15 @@ class BaseCrud(CoreCrud, ABC):
         info = await self._solve_query(info, perm)
         return await self.delete(info, _perm=perm)
 
-    async def get_list_with_perm(self, info: QueryInfo, with_count=False, *, perm: PermInfo) -> QueryResultRowList:
+    async def get_list_with_perm(self, info: QueryInfo, with_count=False, *,
+                                 perm: PermInfo = None) -> QueryResultRowList:
+        if perm is None:
+            perm = PermInfo(False, None, None)
         info = await self._solve_query(info, perm)
         return await self.get_list(info, with_count, _perm=perm)
 
-    async def get_list_with_foreign_keys(self, info: QueryInfo, with_count=False, perm: PermInfo = None) -> QueryResultRowList:
+    async def get_list_with_foreign_keys(self, info: QueryInfo, with_count=False,
+                                         perm: PermInfo = None) -> QueryResultRowList:
         if perm is None:
             perm = PermInfo(False, None, None)
 
@@ -194,7 +209,7 @@ class BaseCrud(CoreCrud, ABC):
                         i.extra[raw_name] = extra.get(i.raw_data[0])
 
                 if query.foreign_keys:
-                    await solve(elist, query.from_table, query.foreign_keys, depth+1)
+                    await solve(elist, query.from_table, query.foreign_keys, depth + 1)
 
         await solve(ret, info.from_table, info.foreign_keys)
         return ret

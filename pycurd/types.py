@@ -4,6 +4,7 @@ from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callabl
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
+from pycurd.const import QUERY_OP_RELATION
 from pycurd.crud.query_result_row import QueryResultRowList
 from pycurd.utils.cls_property import classproperty
 from pycurd.utils.name_helper import camel_case_to_underscore_case
@@ -33,6 +34,14 @@ class RecordMappingField:
     def _condition_expr(self, op, other):
         from pycurd.query import ConditionExpr
         return ConditionExpr(self, op, other)
+
+    def is_(self, other):
+        from pycurd.query import ConditionExpr
+        return ConditionExpr(self, QUERY_OP_RELATION.IS, other)
+
+    def is_not(self, other):
+        from pycurd.query import ConditionExpr
+        return ConditionExpr(self, QUERY_OP_RELATION.IS_NOT, other)
 
     def __eq__(self, other):
         from pycurd.const import QUERY_OP_COMPARE

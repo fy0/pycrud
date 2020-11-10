@@ -1,13 +1,15 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from functools import reduce
 from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
 from pypika import Query, Order
-from pypika.functions import Count
-from pypika.terms import ComplexCriterion, Parameter
+from pypika.enums import Arithmetic
+from pypika.functions import Count, DistinctOptionFunction
+from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, ArithmeticExpression, Criterion
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.base_crud import BaseCrud
@@ -34,6 +36,32 @@ _sql_method_map = {
     QUERY_OP_RELATION.CONTAINS_ANY: 'contains',
     QUERY_OP_RELATION.PREFIX: 'startswith',
 }
+
+
+class ArithmeticExt(Enum):
+    concat = '||'
+
+
+class PostgresArrayDistinct(Criterion):
+    def __init__(self, expr, **kwargs):
+        super().__init__(**kwargs)
+        self._expr = expr
+
+    def get_sql(self, **kwargs):
+        return 'ARRAY(SELECT DISTINCT unnest(%s))' % self._expr.get_sql(**kwargs)
+
+
+class PostgresArrayDifference(Criterion):
+    def __init__(self, a, b, **kwargs):
+        super().__init__(**kwargs)
+        self._left = a
+        self._right = b
+
+    def get_sql(self, **kwargs):
+        return 'array(SELECT unnest(%s) EXCEPT SELECT unnest(%s))' % (
+            self._left.get_sql(**kwargs),
+            self._right.get_sql(**kwargs)
+        )
 
 
 @dataclass
@@ -162,17 +190,33 @@ class SQLCrud(BaseCrud):
 
             if vflag:
                 if vflag == ValuesDataFlag.INCR:
-                    sql = sql.set(k, f'{k} + {val}')
+                    # f'{k} + {val}'
+                    sql = sql.set(k, ArithmeticExpression(Arithmetic.add, PypikaField(k), val))
+
                 elif vflag == ValuesDataFlag.DECR:
-                    sql = sql.set(k, f'{k} - {val}')
+                    # f'{k} - {val}'
+                    sql = sql.set(k, ArithmeticExpression(Arithmetic.sub, PypikaField(k), val))
+
                 elif vflag == ValuesDataFlag.ARRAY_EXTEND:
-                    sql = sql.set(k, f'{k} || {val}')
+                    # f'{k} || {val}'
+                    vexpr = ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val)
+                    sql = sql.set(k, vexpr)
+
                 elif vflag == ValuesDataFlag.ARRAY_PRUNE:
-                    sql = sql.set(k, f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))')
+                    # TODO: 现在prune也会去重，这是不对的
+                    # f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))'
+                    vexpr = PostgresArrayDifference(PypikaField(k), val)
+                    sql = sql.set(k, vexpr)
+
                 elif vflag == ValuesDataFlag.ARRAY_EXTEND_DISTINCT:
-                    sql = sql.set(k, f'array_agg(DISTINCT ({k} || {val})')
+                    # f'ARRAY(SELECT DISTINCT unnest({k} || {val}))'
+                    vexpr = PostgresArrayDistinct(ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val))
+                    sql = sql.set(k, vexpr)
+
                 elif vflag == ValuesDataFlag.ARRAY_PRUNE_DISTINCT:
-                    sql = sql.set(k, f'array_agg(DISTINCT array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))')
+                    vexpr = PostgresArrayDifference(PypikaField(k), val)
+                    sql = sql.set(k, vexpr)
+
             else:
                 sql = sql.set(k, val)
 

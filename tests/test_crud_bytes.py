@@ -1,9 +1,11 @@
+import json
 from typing import Optional
 
 import peewee
 import pytest
 
 from pycurd.crud.ext.peewee_crud import PeeweeCrud
+from pycurd.error import InvalidQueryConditionValue
 from pycurd.pydantic_ext.hex_string import HexString
 from pycurd.query import QueryInfo, QueryConditions, ConditionExpr
 from pycurd.types import RecordMapping
@@ -34,6 +36,7 @@ def crud_db_init():
     db.create_tables([TestModel], safe=True)
 
     TestModel.create(token=b'abcd')
+    TestModel.create(token=b'\xee\xff')
 
     c = PeeweeCrud(None, {
         ATest: TestModel,
@@ -63,7 +66,27 @@ async def test_bytes_query():
 
     ret = await c.get_list(info)
     assert ret[0].to_dict()['token'] == b'abcd'
-    assert len(ret) == TestModel.select().count()
+    assert len(ret) == TestModel.select().where(TestModel.token == b'abcd').count()
+
+
+async def test_bytes_query_from_http():
+    db, c, TestModel = crud_db_init()
+
+    info = QueryInfo.from_json(ATest, {
+        'token.eq': '"eeff"'
+    }, from_http_query=True)
+
+    ret = await c.get_list(info)
+    assert ret[0].to_dict()['token'] == b'\xee\xff'
+    assert len(ret) == TestModel.select().where(TestModel.token == b'\xee\xff').count()
+
+
+async def test_bytes_query_from_http_2():
+    # 双重 stringify
+    with pytest.raises(InvalidQueryConditionValue):
+        info = QueryInfo.from_json(ATest, {
+            'token.eq': '"\\"5e8c3dea000000051d411585\\""'
+        }, from_http_query=True)
 
 
 async def test_bytes_query_memoryview():
@@ -75,7 +98,7 @@ async def test_bytes_query_memoryview():
 
     ret = await c.get_list(info)
     assert ret[0].to_dict()['token'] == b'abcd'
-    assert len(ret) == TestModel.select().count()
+    assert len(ret) == TestModel.select().where(TestModel.token == b'abcd').count()
 
 
 async def test_bytes_serializable():

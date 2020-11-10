@@ -353,7 +353,7 @@ class QueryInfo:
             else:
                 final_value, err = model_field.validate(value, None, loc=_key)
                 if err:
-                    raise InvalidQueryConditionValue('invalid value: %s' % value)
+                    raise InvalidQueryConditionValue('invalid value: %r' % value)
 
             return final_value
 
