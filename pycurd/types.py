@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable
 
@@ -7,7 +8,7 @@ from typing_extensions import Literal
 from pycurd.const import QUERY_OP_RELATION
 from pycurd.crud.query_result_row import QueryResultRowList
 from pycurd.utils.cls_property import classproperty
-from pycurd.utils.name_helper import camel_case_to_underscore_case
+from pycurd.utils.name_helper import camel_case_to_underscore_case, get_class_full_name
 
 if TYPE_CHECKING:
     from pycurd.query import QueryInfo
@@ -239,6 +240,16 @@ class RecordMapping(BaseModel, RecordMappingBase):
 
     def __init_subclass__(cls, **kwargs):
         super(RecordMapping, cls).__init_subclass__()
+
+        def check_hook(func):
+            assert inspect.ismethod(func) and asyncio.iscoroutinefunction(func),\
+                '%s must be async function with @classmethod' % get_class_full_name(func)
+
+        check_hook(cls.on_query)
+        check_hook(cls.on_insert)
+        check_hook(cls.on_read)
+        check_hook(cls.on_update)
+        check_hook(cls.on_delete)
 
         if cls.__name__.startswith('*partial_'):
             return

@@ -14,7 +14,7 @@ from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, Arit
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.base_crud import BaseCrud
 from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
-from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr
+from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr
 from pycurd.types import RecordMapping, RecordMappingField, IDList
 from pycurd.utils.json_ex import json_dumps_ex
 from pycurd.values import ValuesToWrite, ValuesDataFlag
@@ -311,6 +311,9 @@ class SQLCrud(BaseCrud):
                     else:
                         cond = getattr(field, _sql_method_map[c.op])(real_value)
                     return cond
+
+                elif isinstance(c, NegatedExpr):
+                    return ~solve_condition(c.expr)
 
             if info.join:
                 for ji in info.join:

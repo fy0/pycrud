@@ -9,7 +9,7 @@ from typing_extensions import Literal
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
 from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
-    InvalidOrderSyntax
+    InvalidOrderSyntax, InvalidQueryConditionOperator
 from pycurd.types import RecordMapping, RecordMappingField
 
 
@@ -122,6 +122,16 @@ class QueryOrder:
 
 
 @dataclass
+class UnaryExpr:
+    expr: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']
+
+
+@dataclass
+class NegatedExpr(UnaryExpr):
+    pass
+
+
+@dataclass
 class ConditionExpr:
     """
     $ta:id.eq = 123
@@ -135,43 +145,92 @@ class ConditionExpr:
         assert isinstance(self.column, RecordMappingField), 'RecordMappingField excepted, got %s' % type(self.column)
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         return self.column.table.table_name
 
-    def __and__(self, other):
+    def __and__(self, other: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']) -> 'ConditionLogicExpr':
         return ConditionLogicExpr('and', [self, other])
 
-    def __or__(self, other):
+    def __or__(self, other: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']) -> 'ConditionLogicExpr':
         return ConditionLogicExpr('or', [self, other])
+
+    def __invert__(self) -> 'NegatedExpr':
+        return NegatedExpr(self)
 
 
 @dataclass
 class ConditionLogicExpr:
     type: Union[Literal['and'], Literal['or']]
-    items: List[Union[ConditionExpr, 'ConditionLogicExpr']]
+    items: List[Union[ConditionExpr, 'ConditionLogicExpr', 'UnaryExpr']]
 
-    def __and__(self, other):
+    def __and__(self, other: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']):
         if self.type == 'and':
             self.items.append(other)
             return self
         else:
             return ConditionLogicExpr('or', [self, other])
 
-    def __or__(self, other):
+    def __or__(self, other: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']):
         if self.type == 'or':
             self.items.append(other)
             return self
         else:
             return ConditionLogicExpr('and', [self, other])
 
+    def __invert__(self) -> 'NegatedExpr':
+        return NegatedExpr(self)
+
 
 @dataclass
 class QueryConditions:
-    items: List[Union[ConditionExpr, 'ConditionLogicExpr']]
+    items: List[Union[ConditionExpr, 'ConditionLogicExpr', UnaryExpr]]
 
     @property
     def type(self):
         return 'and'
+
+
+AllExprType = Union[QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr]
+
+
+def check_same_expr(a: AllExprType, b: AllExprType) -> bool:
+    if type(a) != type(b):
+        return False
+
+    if isinstance(a, NegatedExpr):
+        return check_same_expr(a.expr, b.expr)
+
+    elif isinstance(a, RecordMappingField):
+        return a.table == b.table and a.name == b.name
+
+    elif isinstance(a, ConditionExpr):
+        if a.op != b.op:
+            return False
+        if not check_same_expr(a.column, b.column):
+            return False
+        if isinstance(a.value, (QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr)):
+            return check_same_expr(a.value, b.value)
+        else:
+            return a.value == b.value
+
+    elif isinstance(a, ConditionLogicExpr):
+        if a.type != b.type:
+            return False
+        if len(a.items) != len(b.items):
+            return False
+
+        for i, j in zip(a.items, b.items):
+            if not check_same_expr(i, j):
+                return False
+        return True
+
+    elif isinstance(a, QueryConditions):
+        for i, j in zip(a.items, b.items):
+            if not check_same_expr(i, j):
+                return False
+        return True
+
+    return a == b
 
 
 @dataclass
@@ -357,15 +416,27 @@ class QueryInfo:
 
             return final_value
 
+        def logic_op_check(key: str, op_prefix: str) -> bool:
+            if key.startswith(op_prefix):
+                if len(key) == len(op_prefix):
+                    return True
+                # allow multi logic expr:
+                # $and.1, $and.2
+                return key[len(op_prefix):].isdigit()
+            return False
+
+        def try_get_op(op_raw: str) -> str:
+            if '.' in op_raw:
+                a, b = op_raw.split('.', 1)
+
+                if b.isdigit():
+                    return a
+                else:
+                    raise InvalidQueryConditionOperator('unknown operator: %s' % op_raw)
+            return op_raw
+
         def parse_conditions(data):
             conditions = []
-
-            def logic_op_check(key: str, op_prefix: str) -> bool:
-                if key.startswith(op_prefix):
-                    if len(key) == len(op_prefix):
-                        return True
-                    return key[len(op_prefix):].isdigit()
-                return False
 
             for key, value in data.items():
                 if key.startswith('$'):
@@ -373,9 +444,14 @@ class QueryInfo:
                         conditions.append(ConditionLogicExpr('or', parse_conditions(value)))
                     elif logic_op_check(key, '$and'):
                         conditions.append(ConditionLogicExpr('and', parse_conditions(value)))
+                    elif logic_op_check(key, '$not'):
+                        conditions.append(NegatedExpr(
+                            ConditionLogicExpr('and', parse_conditions(value))
+                        ))
 
                 elif '.' in key:
                     field_name, op_name = key.split('.', 1)
+                    op_name = try_get_op(op_name)
 
                     op = QUERY_OP_FROM_TXT.get(op_name)
                     if op is None:

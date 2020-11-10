@@ -19,6 +19,10 @@ class InvalidQueryConditionColumn(PyCrudException):
     pass
 
 
+class InvalidQueryConditionOperator(PyCrudException):
+    pass
+
+
 class InvalidQueryConditionValue(PyCrudException):
     pass
 

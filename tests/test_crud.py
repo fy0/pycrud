@@ -150,6 +150,24 @@ async def test_curd_read_2():
     assert len(ret) == 1
 
 
+async def test_curd_read_3():
+    db, MUsers, MTopics, MTopics2 = crud_db_init()
+    c = PeeweeCrud(None, {Topic: MTopics}, db)
+
+    q = QueryInfo.from_json(Topic, {
+        '$not': {
+            'id.eq': 1
+        }
+    })
+
+    ret = await c.get_list(q)
+
+    v1 = {x.id for x in ret}
+    v2 = {x.id for x in MTopics.select().where(MTopics.id != 1)}
+
+    assert v1 == v2
+
+
 async def test_curd_read_by_prefix():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 

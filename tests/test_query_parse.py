@@ -1,9 +1,10 @@
 import pytest
 
 from pycurd.const import QUERY_OP_COMPARE
-from pycurd.error import InvalidQueryConditionValue
-from pycurd.query import QueryInfo, ConditionLogicExpr, QueryOrder
-from pycurd.types import RecordMapping
+from pycurd.error import InvalidQueryConditionValue, InvalidQueryConditionOperator
+from pycurd.query import QueryInfo, ConditionLogicExpr, QueryOrder, check_same_expr, QueryConditions
+from pycurd.types import RecordMapping, RecordMappingField
+from tests.test_query_dsl import f
 
 
 class User(RecordMapping):
@@ -147,6 +148,47 @@ def test_parse_foreignkey_column_not_exists():
             '$fks': {'topic': {'id.eq': '$user:xxxx'}}
         })
         assert '$user:xxxx' in e.value
+
+
+def f(val) -> RecordMappingField:
+    return val
+
+
+def test_parse_multi_same_op():
+    q = QueryInfo.from_json(User, {
+        'id.ne': 1,
+        'id.ne.1': 2,
+        'id.ne.2': 3,
+    })
+    conds1 = q.conditions
+    conds2 = QueryConditions([
+        f(User.id) != 1,
+        f(User.id) != 2,
+        f(User.id) != 3,
+    ])
+
+    assert check_same_expr(conds1, conds2)
+
+
+def test_parse_multi_same_op_failed():
+    with pytest.raises(InvalidQueryConditionOperator):
+        QueryInfo.from_json(User, {
+            'id.ne.a': 1,
+        })
+
+
+def test_parse_negated():
+    q = QueryInfo.from_json(User, {
+        '$not': {
+            'id.eq': 1,
+        }
+    })
+    conds1 = q.conditions
+    conds2 = QueryConditions([
+        ~(ConditionLogicExpr('and', [f(User.id) == 1]))
+    ])
+
+    assert check_same_expr(conds1, conds2)
 
 
 def test_parse_foreignkey():

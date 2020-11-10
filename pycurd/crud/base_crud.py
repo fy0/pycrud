@@ -9,7 +9,7 @@ from pycurd.crud._core_crud import CoreCrud
 from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycurd.error import PermissionException, InvalidQueryValue
 from pycurd.permission import RoleDefine, A
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
+from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr, UnaryExpr
 from pycurd.types import RecordMapping, IDList, RecordMappingField
 from pycurd.values import ValuesToWrite
 
@@ -77,6 +77,9 @@ class BaseCrud(CoreCrud, ABC):
                             # permission
                             return None
 
+                    return c
+
+                elif isinstance(c, UnaryExpr):
                     return c
 
             select_new = [x for x in info.select if x in allow_read]

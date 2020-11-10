@@ -1,4 +1,11 @@
 
+### 0.2.2 update 2020.11.11
+
+* Added: negated condition supported
+
+* Added: QueryInfo.from_json multiple same operator supported
+
+
 ### 0.2.1 update 2020.11.10
 
 * Added: empty update values now throw exception

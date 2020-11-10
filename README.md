@@ -6,13 +6,13 @@ A common crud framework for web.
 
 Features:
 
-* Generate query by json
+* Generate query by json or dsl
 
 * Role based permission system
 
-* Easy to bind
+* Easy to integrate with web framework
 
-* Tested
+* Tested coveraged
 
 
 ### Examples:
@@ -57,6 +57,12 @@ print(lst)
 ```python
 from pycurd.query import QueryInfo
 
+# from dsl
+lst = await c.get_list(QueryInfo.from_table_raw(User, where=[
+    User.id != 1
+]))
+
+# from json
 lst = await c.get_list(QueryInfo.from_json(User, {
     'id.eq': 1
 }))
@@ -71,6 +77,13 @@ from pycurd.query import QueryInfo
 from pycurd.values import ValuesToWrite
 
 v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
+
+# from dsl
+lst = await c.update(QueryInfo.from_table_raw(User, where=[
+    User.id.in_([1, 2, 3])
+]))
+
+# from json
 lst = await c.update(QueryInfo.from_json(User, {
     'id.in': [1,2,3]
 }), v)
@@ -88,6 +101,80 @@ lst = await c.delete(QueryInfo.from_json(User, {
 }))
 
 print(lst)
+```
+
+### Query by json
+
+```python
+from pycurd.query import QueryInfo
+
+# $or: (id < 3) or (id > 5)
+QueryInfo.from_json(User, {
+    '$or': {
+        'id.lt': 3,  
+        'id.gt': 5 
+    }
+})
+
+# $and: 3 < id < 5
+QueryInfo.from_json(User, {
+    '$and': {
+        'id.gt': 3,  
+        'id.lt': 5 
+    }
+})
+
+
+# $not: not (3 < id < 5)
+QueryInfo.from_json(User, {
+    '$not': {
+        'id.gt': 3,  
+        'id.lt': 5 
+    }
+})
+
+# multiple same operator: (id == 3) or (id == 4) or (id == 5)
+QueryInfo.from_json(User, {
+    '$or': {
+        'id.eq': 3,  
+        'id.eq.2': 4,
+        'id.eq.3': 5, 
+    }
+})
+
+# multiple same operator: (3 < id < 5) or (10 < id < 15)
+QueryInfo.from_json(User, {
+    '$or': {
+        '$and': {
+            'id.gt': 3,
+            'id.lt': 5
+        },
+        '$and.2': {
+            'id.gt': 10,
+            'id.lt': 15
+        }
+    }
+})
+
+```
+
+
+### Query by DSL
+```python
+# $or: (id < 3) or (id > 5)
+(User.id < 3) | (User.id > 5)
+
+# $and: 3 < id < 5
+(User.id > 3) & (User.id < 5)
+
+# $not: not (3 < id < 5)
+~((User.id > 3) & (User.id < 5))
+
+# multiple same operator: (id == 3) or (id == 4) or (id == 5)
+(User.id != 3) | (User.id != 4) | (User.id != 5)
+
+# multiple same operator: (3 < id < 5) or (10 < id < 15)
+((User.id > 3) & (User.id < 5)) | ((User.id > 10) & (User.id < 15))
 ```
 
 
