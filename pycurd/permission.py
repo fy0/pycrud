@@ -21,9 +21,19 @@ class A(Enum):
     ALL = {QUERY, CREATE, READ, UPDATE}
 
 
+class Sentinel:
+    def __init__(self, val):
+        self.val = val
+
+    def __eq__(self, other):
+        return self.val == other.val
+
+    def __hash__(self):
+        return hash(self.val)
+
 # PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]
 PermissionDesc = Dict[Type['RecordMapping'], 'TablePerm']
-ALLOW_DELETE = object()
+ALLOW_DELETE = Sentinel('aabb')
 
 
 @dataclass
@@ -43,7 +53,7 @@ class RoleDefine:
         # self._table_type: Optional[Type['RecordMapping']] = None
 
         if self.based_on:
-            self._ability_table = self.based_on._ability_table.copy()
+            self._ability_table = copy.deepcopy(self.based_on._ability_table)
 
         def solve_data(table: Type['RecordMapping'], table_perm: TablePerm) -> Dict[str, Set[A]]:
             """

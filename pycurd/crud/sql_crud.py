@@ -34,7 +34,7 @@ _sql_method_map = {
     QUERY_OP_RELATION.IS_NOT: '__ne__',
     QUERY_OP_RELATION.CONTAINS: 'contains',
     QUERY_OP_RELATION.CONTAINS_ANY: 'contains',
-    QUERY_OP_RELATION.PREFIX: 'startswith',
+    QUERY_OP_RELATION.PREFIX: '',
 }
 
 

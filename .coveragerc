@@ -1,6 +1,6 @@
 [run]
 source =
-    pycrud/
+    pycurd/
 
 [report]
 exclude_lines =

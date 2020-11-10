@@ -7,7 +7,7 @@ import pydantic
 from pycurd.const import QUERY_OP_RELATION
 from pycurd.crud._core_crud import CoreCrud
 from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
-from pycurd.error import PermissionException
+from pycurd.error import PermissionException, InvalidQueryValue
 from pycurd.permission import RoleDefine, A
 from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
 from pycurd.types import RecordMapping, IDList, RecordMappingField
@@ -123,9 +123,19 @@ class BaseCrud(CoreCrud, ABC):
 
         if perm.is_check:
             avail = perm.role.get_perm_avail(info.from_table, A.UPDATE)
+            rest = []
 
-            for j in (values.keys() - avail):
-                del values[j]
+            for j in values.keys():
+                if '.' in j:
+                    j2, _ = j.split('.', 1)
+                else:
+                    j2 = j
+
+                if j2 not in avail:
+                    rest.append(j)
+
+            for i in rest:
+                del values[i]
 
         try:
             values.bind(False, table=info.from_table)
@@ -134,7 +144,7 @@ class BaseCrud(CoreCrud, ABC):
             pass
 
         if not values:
-            return []
+            raise InvalidQueryValue('empty values')
 
         info = await self._solve_query(info, perm)
         lst = await self.update(info, values, _perm=perm)

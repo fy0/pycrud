@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from pycurd.crud.base_crud import PermInfo
 from pycurd.crud.ext.peewee_crud import PeeweeCrud
 from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.error import PermissionException
+from pycurd.error import PermissionException, InvalidQueryValue
 from pycurd.permission import RoleDefine, TablePerm, A
 from pycurd.query import QueryInfo
 from pycurd.values import ValuesToWrite
@@ -94,12 +94,13 @@ async def test_curd_perm_write():
     c = PeeweeCrud(permission, {User: MUsers}, db)
 
     # perm visitor
-    ret = await c.update_with_perm(
-        QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite({'nickname': 'aaa'}, User).bind(),
-        perm=PermInfo(True, None, permission['visitor'])
-    )
-    assert len(ret) == 0  # all filtered
+    with pytest.raises(InvalidQueryValue):
+        ret = await c.update_with_perm(
+            QueryInfo.from_json(User, {'id.eq': 5}),
+            ValuesToWrite({'nickname': 'aaa'}, User).bind(),
+            perm=PermInfo(True, None, permission['visitor'])
+        )
+        assert len(ret) == 0  # all filtered
 
     # not check
     ret = await c.update_with_perm(

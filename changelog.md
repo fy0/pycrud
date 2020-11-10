@@ -1,4 +1,13 @@
 
+### 0.2.1 update 2020.11.10
+
+* Added: empty update values now throw exception
+
+* Fixed: ability inherit bug
+
+* Fixed: update with unary operator filtered by perm
+
+
 ### 0.2.0 update 2020.11.10
 
 * Added: `is_` and `is_not` for field
