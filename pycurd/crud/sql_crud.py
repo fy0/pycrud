@@ -7,9 +7,10 @@ from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
 from pypika import Query, Order
-from pypika.enums import Arithmetic
+from pypika.enums import Arithmetic, Comparator
 from pypika.functions import Count, DistinctOptionFunction
-from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, ArithmeticExpression, Criterion
+from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, ArithmeticExpression, Criterion, \
+    BasicCriterion
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycurd.crud.base_crud import BaseCrud
@@ -33,13 +34,18 @@ _sql_method_map = {
     QUERY_OP_RELATION.IS: '__eq__',
     QUERY_OP_RELATION.IS_NOT: '__ne__',
     QUERY_OP_RELATION.CONTAINS: 'contains',
-    QUERY_OP_RELATION.CONTAINS_ANY: 'contains',
+    QUERY_OP_RELATION.CONTAINS_ANY: '',
     QUERY_OP_RELATION.PREFIX: '',
 }
 
 
 class ArithmeticExt(Enum):
     concat = '||'
+
+
+class ArrayMatchingExt(Comparator):
+    contains = '@>'
+    contains_any = '&&'
 
 
 class PostgresArrayDistinct(Criterion):
@@ -180,49 +186,50 @@ class SQLCrud(BaseCrud):
         for i in when_before_update:
             await i(id_lst)
 
-        # 选择项
-        phg = self.get_placeholder_generator()
-        sql = Query().update(model)
-        for k, v in values.items():
-            vflag = values.data_flag.get(k)
+        if id_lst:
+            # 选择项
+            phg = self.get_placeholder_generator()
+            sql = Query().update(model)
+            for k, v in values.items():
+                vflag = values.data_flag.get(k)
 
-            val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
+                val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
 
-            if vflag:
-                if vflag == ValuesDataFlag.INCR:
-                    # f'{k} + {val}'
-                    sql = sql.set(k, ArithmeticExpression(Arithmetic.add, PypikaField(k), val))
+                if vflag:
+                    if vflag == ValuesDataFlag.INCR:
+                        # f'{k} + {val}'
+                        sql = sql.set(k, ArithmeticExpression(Arithmetic.add, PypikaField(k), val))
 
-                elif vflag == ValuesDataFlag.DECR:
-                    # f'{k} - {val}'
-                    sql = sql.set(k, ArithmeticExpression(Arithmetic.sub, PypikaField(k), val))
+                    elif vflag == ValuesDataFlag.DECR:
+                        # f'{k} - {val}'
+                        sql = sql.set(k, ArithmeticExpression(Arithmetic.sub, PypikaField(k), val))
 
-                elif vflag == ValuesDataFlag.ARRAY_EXTEND:
-                    # f'{k} || {val}'
-                    vexpr = ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val)
-                    sql = sql.set(k, vexpr)
+                    elif vflag == ValuesDataFlag.ARRAY_EXTEND:
+                        # f'{k} || {val}'
+                        vexpr = ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val)
+                        sql = sql.set(k, vexpr)
 
-                elif vflag == ValuesDataFlag.ARRAY_PRUNE:
-                    # TODO: 现在prune也会去重，这是不对的
-                    # f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))'
-                    vexpr = PostgresArrayDifference(PypikaField(k), val)
-                    sql = sql.set(k, vexpr)
+                    elif vflag == ValuesDataFlag.ARRAY_PRUNE:
+                        # TODO: 现在prune也会去重，这是不对的
+                        # f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))'
+                        vexpr = PostgresArrayDifference(PypikaField(k), val)
+                        sql = sql.set(k, vexpr)
 
-                elif vflag == ValuesDataFlag.ARRAY_EXTEND_DISTINCT:
-                    # f'ARRAY(SELECT DISTINCT unnest({k} || {val}))'
-                    vexpr = PostgresArrayDistinct(ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val))
-                    sql = sql.set(k, vexpr)
+                    elif vflag == ValuesDataFlag.ARRAY_EXTEND_DISTINCT:
+                        # f'ARRAY(SELECT DISTINCT unnest({k} || {val}))'
+                        vexpr = PostgresArrayDistinct(ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val))
+                        sql = sql.set(k, vexpr)
 
-                elif vflag == ValuesDataFlag.ARRAY_PRUNE_DISTINCT:
-                    vexpr = PostgresArrayDifference(PypikaField(k), val)
-                    sql = sql.set(k, vexpr)
+                    elif vflag == ValuesDataFlag.ARRAY_PRUNE_DISTINCT:
+                        vexpr = PostgresArrayDifference(PypikaField(k), val)
+                        sql = sql.set(k, vexpr)
 
-            else:
-                sql = sql.set(k, val)
+                else:
+                    sql = sql.set(k, val)
 
-        # 注意：生成的SQL顺序和values顺序的对应关系
-        sql = sql.where(model.id.isin(phg.next(id_lst)))
-        await self.execute_sql(sql.get_sql(), phg)
+            # 注意：生成的SQL顺序和values顺序的对应关系
+            sql = sql.where(model.id.isin(phg.next(id_lst)))
+            await self.execute_sql(sql.get_sql(), phg)
 
         for i in when_complete:
             await i()
@@ -244,9 +251,10 @@ class SQLCrud(BaseCrud):
         for i in when_before_delete:
             await i(id_lst)
 
-        phg = self.get_placeholder_generator()
-        sql = Query().from_(model).delete().where(model.id.isin(phg.next(id_lst)))
-        await self.execute_sql(sql.get_sql(), phg)
+        if id_lst:
+            phg = self.get_placeholder_generator()
+            sql = Query().from_(model).delete().where(model.id.isin(phg.next(id_lst)))
+            await self.execute_sql(sql.get_sql(), phg)
 
         for i in when_complete:
             await i()
@@ -308,6 +316,9 @@ class SQLCrud(BaseCrud):
                         cond = field.like(real_value)
                     elif c.op == QUERY_OP_RELATION.IPREFIX:
                         cond = field.ilike(real_value)
+                    elif c.op == QUERY_OP_RELATION.CONTAINS_ANY:
+                        # &&
+                        cond = BasicCriterion(ArrayMatchingExt.contains_any, field, field.wrap_constant(real_value))
                     else:
                         cond = getattr(field, _sql_method_map[c.op])(real_value)
                     return cond

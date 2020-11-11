@@ -3,8 +3,6 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Union, Set, Dict, Any, Type, Mapping
 
-from pydantic import Field
-from pydantic.fields import ModelField
 from typing_extensions import Literal
 
 from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT

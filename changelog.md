@@ -1,4 +1,11 @@
 
+### 0.2.3 update 2020.11.11
+
+* Fixed: don't execute update or delete if select nothing from database
+
+* Fixed: contains_any
+
+
 ### 0.2.2 update 2020.11.11
 
 * Added: negated condition supported

@@ -76,7 +76,6 @@ class TortoiseCrud(SQLCrud):
         try:
             async with in_transaction() as tconn:
                 if sql.startswith('INSERT INTO'):
-                    # tortoise-orm 本身对 PostgreSQL 没有很好的支持，我自己来
                     if self.is_pg:
                         sql += ' RETURNING id'
                         r = await tconn.execute_insert(sql, phg.values)
