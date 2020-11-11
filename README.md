@@ -4,6 +4,8 @@
 
 A common crud framework for web.
 
+**The project moved to [https://pypi.org/project/pycrud/](https://pypi.org/project/pycrud/)**
+
 Features:
 
 * Generate query by json or dsl
