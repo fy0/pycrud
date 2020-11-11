@@ -1,7 +1,7 @@
 from typing import Optional
 
 import pytest
-from pycurd.types import RecordMapping, IDList
+from pycrud.types import RecordMapping, IDList
 
 
 def test_record_mapping_clsmethod():

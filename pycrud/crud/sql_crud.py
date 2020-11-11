@@ -12,13 +12,13 @@ from pypika.functions import Count, DistinctOptionFunction
 from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, ArithmeticExpression, Criterion, \
     BasicCriterion
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from pycurd.crud.base_crud import BaseCrud
-from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
-from pycurd.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr
-from pycurd.types import RecordMapping, RecordMappingField, IDList
-from pycurd.utils.json_ex import json_dumps_ex
-from pycurd.values import ValuesToWrite, ValuesDataFlag
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from pycrud.crud.base_crud import BaseCrud
+from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
+from pycrud.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr
+from pycrud.types import RecordMapping, RecordMappingField, IDList
+from pycrud.utils.json_ex import json_dumps_ex
+from pycrud.values import ValuesToWrite, ValuesDataFlag
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -274,7 +274,7 @@ class SQLCrud(BaseCrud):
         q = q.from_(model)
 
         select_fields = [model.id]
-        for i in info.select_for_curd:
+        for i in info.select_for_crud:
             select_fields.append(getattr(self.mapping2model[i.table], i.name))
 
         q = q.select(*select_fields)

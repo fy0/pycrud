@@ -3,12 +3,12 @@ from typing import Optional
 import peewee
 import pytest
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr
-from pycurd.types import RecordMapping
-from pycurd.values import ValuesToWrite
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
+from pycrud.types import RecordMapping
+from pycrud.values import ValuesToWrite
 
 pytestmark = [pytest.mark.asyncio]
 
@@ -85,7 +85,7 @@ def crud_db_init():
     return db, Users, Topics, Topics2
 
 
-async def test_curd_simple():
+async def test_crud_simple():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     info = QueryInfo(User)
@@ -133,7 +133,7 @@ async def test_curd_simple():
     assert len(d['$extra']['topic[]']) == 2
 
 
-async def test_curd_read_2():
+async def test_crud_read_2():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {
@@ -150,7 +150,7 @@ async def test_curd_read_2():
     assert len(ret) == 1
 
 
-async def test_curd_read_3():
+async def test_crud_read_3():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
     c = PeeweeCrud(None, {Topic: MTopics}, db)
 
@@ -168,7 +168,7 @@ async def test_curd_read_3():
     assert v1 == v2
 
 
-async def test_curd_read_by_prefix():
+async def test_crud_read_by_prefix():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {
@@ -183,7 +183,7 @@ async def test_curd_read_by_prefix():
     assert ret[0].to_dict()['username'] == 'test4'
 
 
-async def test_curd_read_with_count():
+async def test_crud_read_with_count():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {
@@ -197,7 +197,7 @@ async def test_curd_read_with_count():
     assert ret.rows_count == MTopics.select().count()
 
 
-async def test_curd_and_or():
+async def test_crud_and_or():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
     c = PeeweeCrud(None, {User: MUsers}, db)
 
@@ -215,7 +215,7 @@ async def test_curd_and_or():
     assert [x.id for x in ret] == [1, 2, 4, 5]
 
 
-async def test_curd_write_success():
+async def test_crud_write_success():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {
@@ -235,7 +235,7 @@ async def test_curd_write_success():
         assert i.content == 'welcome'
 
 
-async def test_curd_insert_success():
+async def test_crud_insert_success():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {
@@ -258,7 +258,7 @@ async def test_curd_insert_success():
         assert i.content == 'insert1'
 
 
-async def test_curd_delete_success():
+async def test_crud_delete_success():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     c = PeeweeCrud(None, {

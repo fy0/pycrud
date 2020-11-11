@@ -5,9 +5,9 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycurd.types import RecordMapping
-from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
-from pycurd.error import DBException, UnknownDatabaseException
+from pycrud.types import RecordMapping
+from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
+from pycrud.error import DBException, UnknownDatabaseException
 
 if typing.TYPE_CHECKING:
     import peewee

@@ -1,9 +1,9 @@
 import pytest
 
-from pycurd.const import QUERY_OP_COMPARE
-from pycurd.error import InvalidQueryConditionValue, InvalidQueryConditionOperator
-from pycurd.query import QueryInfo, ConditionLogicExpr, QueryOrder, check_same_expr, QueryConditions
-from pycurd.types import RecordMapping, RecordMappingField
+from pycrud.const import QUERY_OP_COMPARE
+from pycrud.error import InvalidQueryConditionValue, InvalidQueryConditionOperator
+from pycrud.query import QueryInfo, ConditionLogicExpr, QueryOrder, check_same_expr, QueryConditions
+from pycrud.types import RecordMapping, RecordMappingField
 from tests.test_query_dsl import f
 
 
@@ -26,12 +26,12 @@ def test_select_simple():
         '$select': 'id, nickname, password',
         '$select-': ''
     })
-    assert q.select_for_curd == [User.id, User.nickname, User.password]
+    assert q.select_for_crud == [User.id, User.nickname, User.password]
 
 
 def test_select_simple2():
     q = QueryInfo.from_json(User, {})
-    assert q.select_for_curd == [User.id, User.nickname, User.username, User.password, User.test]
+    assert q.select_for_crud == [User.id, User.nickname, User.username, User.password, User.test]
 
 
 def test_condition_simple():

@@ -1,7 +1,7 @@
 import binascii
 import json
 
-from pycurd.crud.query_result_row import QueryResultRow
+from pycrud.crud.query_result_row import QueryResultRow
 
 
 def json_default_ex(o):

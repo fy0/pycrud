@@ -5,9 +5,9 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycurd.types import RecordMapping
-from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
-from pycurd.error import DBException
+from pycrud.types import RecordMapping
+from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
+from pycrud.error import DBException
 
 if typing.TYPE_CHECKING:
     import tortoise

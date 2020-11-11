@@ -4,8 +4,6 @@
 
 A common crud framework for web.
 
-**The project moved to [https://pypi.org/project/pycrud/](https://pypi.org/project/pycrud/)**
-
 Features:
 
 * Generate query by json or dsl
@@ -25,8 +23,8 @@ Features:
 from typing import Optional
 
 from playhouse.db_url import connect
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.types import RecordMapping
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.types import RecordMapping
 
 class User(RecordMapping):
     id: Optional[int]
@@ -46,7 +44,7 @@ c = PeeweeCrud(None, {
 #### Create
 
 ```python
-from pycurd.values import ValuesToWrite
+from pycrud.values import ValuesToWrite
 
 v = ValuesToWrite({'nickname': 'wwww', 'username': 'u2'})
 lst = await c.insert_many(User, [v])
@@ -57,7 +55,7 @@ print(lst)
 #### Read
 
 ```python
-from pycurd.query import QueryInfo
+from pycrud.query import QueryInfo
 
 # from dsl
 lst = await c.get_list(QueryInfo.from_table_raw(User, where=[
@@ -75,8 +73,8 @@ print([x.to_dict() for x in lst])
 #### Update
 
 ```python
-from pycurd.query import QueryInfo
-from pycurd.values import ValuesToWrite
+from pycrud.query import QueryInfo
+from pycrud.values import ValuesToWrite
 
 v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
 
@@ -96,7 +94,7 @@ print(lst)
 #### Delete
 
 ```python
-from pycurd.query import QueryInfo
+from pycrud.query import QueryInfo
 
 lst = await c.delete(QueryInfo.from_json(User, {
     'id.in': [1,2,3]
@@ -108,7 +106,7 @@ print(lst)
 ### Query by json
 
 ```python
-from pycurd.query import QueryInfo
+from pycrud.query import QueryInfo
 
 # $or: (id < 3) or (id > 5)
 QueryInfo.from_json(User, {

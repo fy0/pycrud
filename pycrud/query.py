@@ -5,10 +5,10 @@ from typing import List, Union, Set, Dict, Any, Type, Mapping
 
 from typing_extensions import Literal
 
-from pycurd.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
-from pycurd.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
+from pycrud.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
     InvalidOrderSyntax, InvalidQueryConditionOperator
-from pycurd.types import RecordMapping, RecordMappingField
+from pycrud.types import RecordMapping, RecordMappingField
 
 
 class LogicRelation:
@@ -327,7 +327,7 @@ class QueryInfo:
         # return QueryInfo(d)
 
     @property
-    def select_for_curd(self):
+    def select_for_crud(self):
         if self._select is None:
             select = []
             for i in self.select:

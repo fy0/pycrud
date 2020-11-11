@@ -3,10 +3,10 @@ from typing import Mapping, TYPE_CHECKING, Type, Dict
 
 from multidict import MultiDict
 
-from pycurd.error import InvalidQueryConditionValue, InvalidQueryValue
+from pycrud.error import InvalidQueryConditionValue, InvalidQueryValue
 
 if TYPE_CHECKING:
-    from pycurd.types import RecordMapping
+    from pycrud.types import RecordMapping
 
 
 class ValuesDataFlag(Enum):

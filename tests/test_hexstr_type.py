@@ -1,6 +1,6 @@
-from pycurd.pydantic_ext.hex_string import HexString
-from pycurd.query import QueryInfo, ConditionLogicExpr
-from pycurd.types import RecordMapping
+from pycrud.pydantic_ext.hex_string import HexString
+from pycrud.query import QueryInfo, ConditionLogicExpr
+from pycrud.types import RecordMapping
 
 
 class User(RecordMapping):

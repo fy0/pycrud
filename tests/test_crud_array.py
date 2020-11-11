@@ -5,12 +5,12 @@ import pytest
 from playhouse.postgres_ext import ArrayField
 from pydantic import Field
 
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.crud.sql_crud import PlaceHolderGenerator, SQLExecuteResult
-from pycurd.query import QueryInfo
-from pycurd.types import RecordMapping
-from pycurd.values import ValuesToWrite
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.crud.sql_crud import PlaceHolderGenerator, SQLExecuteResult
+from pycrud.query import QueryInfo
+from pycrud.types import RecordMapping
+from pycrud.values import ValuesToWrite
 
 pytestmark = [pytest.mark.asyncio]
 
@@ -49,7 +49,7 @@ def crud_db_init():
     return c, db, TableOneModel
 
 
-async def test_curd_array_extend():
+async def test_crud_array_extend():
     c, db, TableOneModel = crud_db_init()
     await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
         'arr.array_extend': ['aa', 'bb']
@@ -57,7 +57,7 @@ async def test_curd_array_extend():
     assert c.last_sql == 'UPDATE "table_one" SET "arr"="arr"||? WHERE "id" IN (?)'
 
 
-async def test_curd_array_extend_distinct():
+async def test_crud_array_extend_distinct():
     c, db, TableOneModel = crud_db_init()
     await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
         'arr.array_extend_distinct': ['aa', 'bb']
@@ -65,7 +65,7 @@ async def test_curd_array_extend_distinct():
     assert c.last_sql == 'UPDATE "table_one" SET "arr"=ARRAY(SELECT DISTINCT unnest("arr"||?)) WHERE "id" IN (?)'
 
 
-async def test_curd_array_prune_distinct():
+async def test_crud_array_prune_distinct():
     c, db, TableOneModel = crud_db_init()
     await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
         'arr.array_prune_distinct': ['aa', 'bb']
@@ -73,7 +73,7 @@ async def test_curd_array_prune_distinct():
     assert c.last_sql == 'UPDATE "table_one" SET "arr"=array(SELECT unnest("arr") EXCEPT SELECT unnest(?)) WHERE "id" IN (?)'
 
 
-async def test_curd_array_contains_any():
+async def test_crud_array_contains_any():
     c, db, TableOneModel = crud_db_init()
     await c.get_list(QueryInfo.from_json(TableOne, {
         '$select': 'id',
