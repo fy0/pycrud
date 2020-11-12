@@ -1,18 +1,19 @@
+import asyncio
 import inspect
 from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable
 
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
 
-from pycurd.const import QUERY_OP_RELATION
-from pycurd.crud.query_result_row import QueryResultRowList
-from pycurd.utils.cls_property import classproperty
-from pycurd.utils.name_helper import camel_case_to_underscore_case
+from pycrud.const import QUERY_OP_RELATION
+from pycrud.crud.query_result_row import QueryResultRowList
+from pycrud.utils.cls_property import classproperty
+from pycrud.utils.name_helper import camel_case_to_underscore_case, get_class_full_name
 
 if TYPE_CHECKING:
-    from pycurd.query import QueryInfo
-    from pycurd.values import ValuesToWrite
-    from pycurd.crud.base_crud import PermInfo
+    from pycrud.query import QueryInfo
+    from pycrud.values import ValuesToWrite
+    from pycrud.crud.base_crud import PermInfo
 
 IDList = List[Any]
 
@@ -32,67 +33,67 @@ class RecordMappingField:
         return '%s.%s' % (self.table.table_name, str(self.name))
 
     def _condition_expr(self, op, other):
-        from pycurd.query import ConditionExpr
+        from pycrud.query import ConditionExpr
         return ConditionExpr(self, op, other)
 
     def is_(self, other):
-        from pycurd.query import ConditionExpr
+        from pycrud.query import ConditionExpr
         return ConditionExpr(self, QUERY_OP_RELATION.IS, other)
 
     def is_not(self, other):
-        from pycurd.query import ConditionExpr
+        from pycrud.query import ConditionExpr
         return ConditionExpr(self, QUERY_OP_RELATION.IS_NOT, other)
 
     def __eq__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.EQ, other)
 
     def __ne__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.NE, other)
 
     def __le__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.LE, other)
 
     def __lt__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.LT, other)
 
     def __ge__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.GE, other)
 
     def __gt__(self, other):
-        from pycurd.const import QUERY_OP_COMPARE
+        from pycrud.const import QUERY_OP_COMPARE
         return self._condition_expr(QUERY_OP_COMPARE.GT, other)
 
     def contains(self, others: List[Any]):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.CONTAINS, others)
 
     def contains_any(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.CONTAINS_ANY, other)
 
     def is_(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.IS, other)
 
     def is_not(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.IS_NOT, other)
 
     def in_(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.IN, other)
 
     def not_in(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.NOT_IN, other)
 
     def prefix_with(self, other: Any):
-        from pycurd.const import QUERY_OP_RELATION
+        from pycrud.const import QUERY_OP_RELATION
         return self._condition_expr(QUERY_OP_RELATION.PREFIX, other)
 
 
@@ -239,6 +240,16 @@ class RecordMapping(BaseModel, RecordMappingBase):
 
     def __init_subclass__(cls, **kwargs):
         super(RecordMapping, cls).__init_subclass__()
+
+        def check_hook(func):
+            assert inspect.ismethod(func) and asyncio.iscoroutinefunction(func),\
+                '%s must be async function with @classmethod' % get_class_full_name(func)
+
+        check_hook(cls.on_query)
+        check_hook(cls.on_insert)
+        check_hook(cls.on_read)
+        check_hook(cls.on_update)
+        check_hook(cls.on_delete)
 
         if cls.__name__.startswith('*partial_'):
             return

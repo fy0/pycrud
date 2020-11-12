@@ -5,9 +5,9 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycurd.types import RecordMapping
-from pycurd.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
-from pycurd.error import DBException
+from pycrud.types import RecordMapping
+from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
+from pycrud.error import DBException
 
 if typing.TYPE_CHECKING:
     import tortoise
@@ -76,7 +76,6 @@ class TortoiseCrud(SQLCrud):
         try:
             async with in_transaction() as tconn:
                 if sql.startswith('INSERT INTO'):
-                    # tortoise-orm 本身对 PostgreSQL 没有很好的支持，我自己来
                     if self.is_pg:
                         sql += ' RETURNING id'
                         r = await tconn.execute_insert(sql, phg.values)

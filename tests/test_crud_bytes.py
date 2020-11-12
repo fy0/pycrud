@@ -4,11 +4,11 @@ from typing import Optional
 import peewee
 import pytest
 
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.error import InvalidQueryConditionValue
-from pycurd.pydantic_ext.hex_string import HexString
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr
-from pycurd.types import RecordMapping
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.error import InvalidQueryConditionValue
+from pycrud.pydantic_ext.hex_string import HexString
+from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
+from pycrud.types import RecordMapping
 
 pytestmark = [pytest.mark.asyncio]
 

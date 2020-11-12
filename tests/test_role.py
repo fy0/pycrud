@@ -1,7 +1,7 @@
 from typing import Optional
 
-from pycurd.permission import RoleDefine, TablePerm, A
-from pycurd.types import RecordMapping
+from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.types import RecordMapping
 
 
 class User(RecordMapping):

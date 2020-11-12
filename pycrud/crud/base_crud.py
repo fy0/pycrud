@@ -4,14 +4,14 @@ from typing import Any, Dict, Union, List, Type, Iterable
 
 import pydantic
 
-from pycurd.const import QUERY_OP_RELATION
-from pycurd.crud._core_crud import CoreCrud
-from pycurd.crud.query_result_row import QueryResultRow, QueryResultRowList
-from pycurd.error import PermissionException, InvalidQueryValue
-from pycurd.permission import RoleDefine, A
-from pycurd.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr
-from pycurd.types import RecordMapping, IDList, RecordMappingField
-from pycurd.values import ValuesToWrite
+from pycrud.const import QUERY_OP_RELATION
+from pycrud.crud._core_crud import CoreCrud
+from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
+from pycrud.error import PermissionException, InvalidQueryValue
+from pycrud.permission import RoleDefine, A
+from pycrud.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr, UnaryExpr
+from pycrud.types import RecordMapping, IDList, RecordMappingField
+from pycrud.values import ValuesToWrite
 
 
 @dataclass
@@ -31,7 +31,7 @@ class BaseCrud(CoreCrud, ABC):
     async def solve_returning(self, table: Type[RecordMapping], id_lst: IDList, info: QueryInfo = None,
                               perm: PermInfo = None):
         if info:
-            selects = info.select_for_curd
+            selects = info.select_for_crud
         else:
             selects = [getattr(table, x) for x in table.__annotations__.keys()]
 
@@ -77,6 +77,9 @@ class BaseCrud(CoreCrud, ABC):
                             # permission
                             return None
 
+                    return c
+
+                elif isinstance(c, UnaryExpr):
                     return c
 
             select_new = [x for x in info.select if x in allow_read]

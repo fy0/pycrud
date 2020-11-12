@@ -1,9 +1,10 @@
 import pytest
 
-from pycurd.const import QUERY_OP_COMPARE
-from pycurd.error import InvalidQueryConditionValue
-from pycurd.query import QueryInfo, ConditionLogicExpr, QueryOrder
-from pycurd.types import RecordMapping
+from pycrud.const import QUERY_OP_COMPARE
+from pycrud.error import InvalidQueryConditionValue, InvalidQueryConditionOperator
+from pycrud.query import QueryInfo, ConditionLogicExpr, QueryOrder, check_same_expr, QueryConditions
+from pycrud.types import RecordMapping, RecordMappingField
+from tests.test_query_dsl import f
 
 
 class User(RecordMapping):
@@ -25,12 +26,12 @@ def test_select_simple():
         '$select': 'id, nickname, password',
         '$select-': ''
     })
-    assert q.select_for_curd == [User.id, User.nickname, User.password]
+    assert q.select_for_crud == [User.id, User.nickname, User.password]
 
 
 def test_select_simple2():
     q = QueryInfo.from_json(User, {})
-    assert q.select_for_curd == [User.id, User.nickname, User.username, User.password, User.test]
+    assert q.select_for_crud == [User.id, User.nickname, User.username, User.password, User.test]
 
 
 def test_condition_simple():
@@ -147,6 +148,47 @@ def test_parse_foreignkey_column_not_exists():
             '$fks': {'topic': {'id.eq': '$user:xxxx'}}
         })
         assert '$user:xxxx' in e.value
+
+
+def f(val) -> RecordMappingField:
+    return val
+
+
+def test_parse_multi_same_op():
+    q = QueryInfo.from_json(User, {
+        'id.ne': 1,
+        'id.ne.1': 2,
+        'id.ne.2': 3,
+    })
+    conds1 = q.conditions
+    conds2 = QueryConditions([
+        f(User.id) != 1,
+        f(User.id) != 2,
+        f(User.id) != 3,
+    ])
+
+    assert check_same_expr(conds1, conds2)
+
+
+def test_parse_multi_same_op_failed():
+    with pytest.raises(InvalidQueryConditionOperator):
+        QueryInfo.from_json(User, {
+            'id.ne.a': 1,
+        })
+
+
+def test_parse_negated():
+    q = QueryInfo.from_json(User, {
+        '$not': {
+            'id.eq': 1,
+        }
+    })
+    conds1 = q.conditions
+    conds2 = QueryConditions([
+        ~(ConditionLogicExpr('and', [f(User.id) == 1]))
+    ])
+
+    assert check_same_expr(conds1, conds2)
 
 
 def test_parse_foreignkey():

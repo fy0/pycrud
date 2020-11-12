@@ -1,5 +1,5 @@
-from pycurd.permission import RoleDefine, TablePerm, A
-from pycurd.types import RecordMapping
+from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.types import RecordMapping
 
 
 def test_role_perm_simple():

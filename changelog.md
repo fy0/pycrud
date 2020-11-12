@@ -1,4 +1,25 @@
 
+### 0.3.0 update 2020.11.11
+
+* Note: renamed to **pycrud** in pypi (thanks for owner [Emanuel Calso](https://github.com/bloodpet/))
+
+
+### 0.2.3 update 2020.11.11
+
+* Fixed: don't execute update or delete if select nothing from database
+
+* Fixed: contains_any
+
+
+### 0.2.2 update 2020.11.11
+
+* Added: negated condition supported
+
+* Added: QueryInfo.from_json multiple same operator supported
+
+* Added: invalid `on_event` define will cause Exception
+
+
 ### 0.2.1 update 2020.11.10
 
 * Added: empty update values now throw exception

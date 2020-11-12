@@ -1,7 +1,7 @@
 import os
 import re
 
-from pycurd import __version__
+from pycrud import __version__
 
 
 def test_version():

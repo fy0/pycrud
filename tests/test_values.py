@@ -2,8 +2,8 @@ from typing import Optional, List
 
 from pydantic import Field
 
-from pycurd.types import RecordMapping
-from pycurd.values import ValuesToWrite, ValuesDataFlag
+from pycrud.types import RecordMapping
+from pycrud.values import ValuesToWrite, ValuesDataFlag
 
 
 class User(RecordMapping):

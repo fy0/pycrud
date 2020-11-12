@@ -1,8 +1,8 @@
 from typing import Any, Union
 
-from pycurd.const import QUERY_OP_COMPARE
-from pycurd.query import QueryInfo, ConditionLogicExpr, QueryConditions
-from pycurd.types import RecordMapping, RecordMappingField
+from pycrud.const import QUERY_OP_COMPARE
+from pycrud.query import QueryInfo, ConditionLogicExpr, QueryConditions
+from pycrud.types import RecordMapping, RecordMappingField
 
 
 class User(RecordMapping):
@@ -19,12 +19,12 @@ def f(val) -> Union[RecordMappingField, Any]:
 
 def test_select_dsl_simple():
     q = QueryInfo.from_table_raw(User, select=[User.id, User.nickname, User.password])
-    assert q.select_for_curd == [User.id, User.nickname, User.password]
+    assert q.select_for_crud == [User.id, User.nickname, User.password]
 
 
 def test_select_simple2():
     q = QueryInfo.from_table_raw(User)
-    assert q.select_for_curd == [User.id, User.nickname, User.username, User.password, User.test]
+    assert q.select_for_crud == [User.id, User.nickname, User.username, User.password, User.test]
 
 
 def test_dsl_condition_simple():

@@ -1,19 +1,19 @@
 import pytest
 from pydantic import ValidationError
 
-from pycurd.crud.base_crud import PermInfo
-from pycurd.crud.ext.peewee_crud import PeeweeCrud
-from pycurd.crud.query_result_row import QueryResultRow
-from pycurd.error import PermissionException, InvalidQueryValue
-from pycurd.permission import RoleDefine, TablePerm, A
-from pycurd.query import QueryInfo
-from pycurd.values import ValuesToWrite
+from pycrud.crud.base_crud import PermInfo
+from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.crud.query_result_row import QueryResultRow
+from pycrud.error import PermissionException, InvalidQueryValue
+from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.query import QueryInfo
+from pycrud.values import ValuesToWrite
 from tests.test_crud import crud_db_init, User
 
 pytestmark = [pytest.mark.asyncio]
 
 
-async def test_curd_perm_read():
+async def test_crud_perm_read():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     permission = {
@@ -33,7 +33,7 @@ async def test_curd_perm_read():
         assert i.to_dict().keys() == {'id', 'password'}
 
 
-async def test_curd_perm_query_disallow_and_allow_simple():
+async def test_crud_perm_query_disallow_and_allow_simple():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     permission = {
@@ -67,11 +67,11 @@ async def test_curd_perm_query_disallow_and_allow_simple():
     assert len(ret) == 1
 
 
-async def test_curd_perm_query_inside():
+async def test_crud_perm_query_inside():
     pass
 
 
-async def test_curd_perm_write():
+async def test_crud_perm_write():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     permission = {
@@ -131,7 +131,7 @@ async def test_curd_perm_write():
     assert isinstance(ret[0], QueryResultRow)
 
 
-async def test_curd_perm_delete():
+async def test_crud_perm_delete():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     role_visitor = RoleDefine({
@@ -169,7 +169,7 @@ async def test_curd_perm_delete():
     assert len(await c.get_list(QueryInfo(User))) == 0
 
 
-async def test_curd_perm_insert():
+async def test_crud_perm_insert():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
     role_visitor = RoleDefine({
