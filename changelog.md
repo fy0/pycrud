@@ -1,4 +1,11 @@
 
+### 0.3.1 update 2020.11.12
+
+* Added: null supported with QueryInfo.from_json
+
+* Added: `is` / `is_not` supported
+
+
 ### 0.3.0 update 2020.11.11
 
 * Note: renamed to **pycrud** in pypi (thanks for owner [Emanuel Calso](https://github.com/bloodpet/))

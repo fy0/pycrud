@@ -17,9 +17,9 @@ class QUERY_OP_LOGIC(Enum):
 
 class QUERY_OP_RELATION(Enum):
     IN = ('in',)
-    NOT_IN = ('notin', 'not in')
+    NOT_IN = ('notin', 'not_in')
     IS = ('is',)
-    IS_NOT = ('isnot', 'is not')
+    IS_NOT = ('isnot', 'is_not')
     PREFIX = ('prefix',)  # string like only
     IPREFIX = ('iprefix',)  # string like only
     CONTAINS = ('contains',)  # ArrayField only

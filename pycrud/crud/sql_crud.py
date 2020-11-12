@@ -31,8 +31,8 @@ _sql_method_map = {
     QUERY_OP_COMPARE.GT: '__gt__',
     QUERY_OP_RELATION.IN: 'isin',
     QUERY_OP_RELATION.NOT_IN: 'notin',
-    QUERY_OP_RELATION.IS: '__eq__',
-    QUERY_OP_RELATION.IS_NOT: '__ne__',
+    QUERY_OP_RELATION.IS: '',
+    QUERY_OP_RELATION.IS_NOT: '',
     QUERY_OP_RELATION.CONTAINS: 'contains',
     QUERY_OP_RELATION.CONTAINS_ANY: '',
     QUERY_OP_RELATION.PREFIX: '',
@@ -46,6 +46,8 @@ class ArithmeticExt(Enum):
 class ArrayMatchingExt(Comparator):
     contains = '@>'
     contains_any = '&&'
+    is_ = ' IS '
+    is_not = ' IS NOT '
 
 
 class PostgresArrayDistinct(Criterion):
@@ -316,11 +318,18 @@ class SQLCrud(BaseCrud):
                         cond = field.like(real_value)
                     elif c.op == QUERY_OP_RELATION.IPREFIX:
                         cond = field.ilike(real_value)
+
+                    elif c.op == QUERY_OP_RELATION.IS:
+                        cond = BasicCriterion(ArrayMatchingExt.is_, field, field.wrap_constant(real_value))
+                    elif c.op == QUERY_OP_RELATION.IS_NOT:
+                        cond = BasicCriterion(ArrayMatchingExt.is_not, field, field.wrap_constant(real_value))
+
                     elif c.op == QUERY_OP_RELATION.CONTAINS_ANY:
                         # &&
                         cond = BasicCriterion(ArrayMatchingExt.contains_any, field, field.wrap_constant(real_value))
                     else:
                         cond = getattr(field, _sql_method_map[c.op])(real_value)
+
                     return cond
 
                 elif isinstance(c, NegatedExpr):

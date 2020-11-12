@@ -12,7 +12,7 @@ Features:
 
 * Easy to integrate with web framework
 
-* Tested coveraged
+* Tested
 
 
 ### Examples:
@@ -189,11 +189,12 @@ QueryInfo.from_json(User, {
 | compare | GE | ('ge', '>=') |
 | compare | GT | ('gt', '>') |
 | relation | IN | ('in',) |
-| relation | NOT_IN | ('notin', 'not in') |
+| relation | NOT_IN | ('notin', 'not_in') |
 | relation | IS | ('is',) |
-| relation | IS_NOT | ('isnot', 'is not') |
+| relation | IS_NOT | ('isnot', 'is_not') |
 | relation | PREFIX | ('prefix',) |
 | relation | CONTAINS | ('contains',) |
+| relation | CONTAINS_ANY | ('contains_any',) |
 | logic | AND | ('and',) |
 | logic | OR | ('or',) |
 

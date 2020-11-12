@@ -80,3 +80,25 @@ async def test_crud_array_contains_any():
         'arr.contains_any': ['a']
     }))
     assert c.last_sql == 'SELECT "id","id" FROM "table_one" WHERE "arr"&&? LIMIT 20'
+
+
+async def test_crud_is_null():
+    c, db, TableOneModel = crud_db_init()
+
+    await c.get_list(QueryInfo.from_json(TableOne, {
+        '$select': 'id',
+        'arr.is': 'null',
+    }, from_http_query=True))
+
+    assert c.last_sql == 'SELECT "id","id" FROM "table_one" WHERE "arr" IS ? LIMIT 20'
+
+
+async def test_crud_is_not_null():
+    c, db, TableOneModel = crud_db_init()
+
+    await c.get_list(QueryInfo.from_json(TableOne, {
+        '$select': 'id',
+        'arr.is_not': 'null',
+    }, from_http_query=True))
+
+    assert c.last_sql == 'SELECT "id","id" FROM "table_one" WHERE "arr" IS NOT ? LIMIT 20'

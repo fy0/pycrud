@@ -1,6 +1,6 @@
 from typing import Any, Union
 
-from pycrud.const import QUERY_OP_COMPARE
+from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycrud.query import QueryInfo, ConditionLogicExpr, QueryConditions
 from pycrud.types import RecordMapping, RecordMappingField
 
@@ -68,3 +68,12 @@ def test_condition_logic_2():
     assert isinstance(cond.items[1], ConditionLogicExpr)
     assert cond.items[1].type == 'or'
     assert cond.items[1].items[1].value == 10
+
+
+def test_condition_is():
+    q = QueryInfo.from_table_raw(User, where=[
+        f(User.nickname).is_(None)
+    ])
+
+    cond = q.conditions.items[0]
+    assert cond.op == QUERY_OP_RELATION.IS

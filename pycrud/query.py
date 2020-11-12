@@ -355,16 +355,21 @@ class QueryInfo:
     @classmethod
     def from_json(cls, table: Type[RecordMapping], data, from_http_query=False, check_cond_with_field=False):
         assert table, 'table must be exists'
+        assert issubclass(table, RecordMapping)
+
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
 
         def http_value_try_parse(value):
             if from_http_query:
-                try:
-                    return json.loads(value)
-                except (TypeError, json.JSONDecodeError):
-                    raise InvalidQueryConditionValue(
-                        'right value must can be unserializable with json.loads')
+                if value == 'null':
+                    value = None
+                else:
+                    try:
+                        return json.loads(value)
+                    except (TypeError, json.JSONDecodeError):
+                        raise InvalidQueryConditionValue(
+                            'right value must can be unserializable with json.loads')
             return value
 
         def parse_select(select_text, unselect_text):
@@ -408,9 +413,12 @@ class QueryInfo:
                         raise InvalidQueryConditionValue('invalid value: %s' % value)
                     final_value.append(val)
             else:
-                final_value, err = model_field.validate(value, None, loc=_key)
-                if err:
-                    raise InvalidQueryConditionValue('invalid value: %r' % value)
+                if value is None:
+                    final_value = value
+                else:
+                    final_value, err = model_field.validate(value, None, loc=_key)
+                    if err:
+                        raise InvalidQueryConditionValue('invalid value: %r' % value)
 
             return final_value
 
