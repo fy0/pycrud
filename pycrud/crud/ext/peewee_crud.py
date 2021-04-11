@@ -5,7 +5,7 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
 from pycrud.error import DBException, UnknownDatabaseException
 
@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class PeeweeCrud(SQLCrud):
-    mapping2model: Dict[Type[RecordMapping], Union[str, Type['peewee.Model']]]
+    entity2model: Dict[Type[Entity], Union[str, Type['peewee.Model']]]
     db: Any
 
     def __post_init__(self):
@@ -28,7 +28,7 @@ class PeeweeCrud(SQLCrud):
         super().__post_init__()
 
         self._primary_keys = {}
-        for k, v in self.mapping2model.items():
+        for k, v in self.entity2model.items():
             if inspect.isclass(v) and issubclass(v, peewee.Model):
                 self._primary_keys[k] = v._meta.primary_key.name
 
@@ -38,9 +38,9 @@ class PeeweeCrud(SQLCrud):
                     elif isinstance(f, (BinaryJSONField, MySQL_JSONField, SQLite_JSONField)):
                         self._table_cache[k]['json_fields'].add(f.name)
 
-        for k, v in self.mapping2model.items():
+        for k, v in self.entity2model.items():
             if inspect.isclass(v) and issubclass(v, peewee.Model):
-                self.mapping2model[k] = pypika.Table(v._meta.table_name)
+                self.entity2model[k] = pypika.Table(v._meta.table_name)
 
         self._phg_cache = None
 

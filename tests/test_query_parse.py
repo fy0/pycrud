@@ -3,11 +3,11 @@ import pytest
 from pycrud.const import QUERY_OP_COMPARE
 from pycrud.error import InvalidQueryConditionValue, InvalidQueryConditionOperator
 from pycrud.query import QueryInfo, ConditionLogicExpr, QueryOrder, check_same_expr, QueryConditions
-from pycrud.types import RecordMapping, RecordMappingField
+from pycrud.types import Entity, EntityField
 from tests.test_query_dsl import f
 
 
-class User(RecordMapping):
+class User(Entity):
     id: int
     nickname: str
     username: str
@@ -15,7 +15,7 @@ class User(RecordMapping):
     test: int = 1
 
 
-class Topic(RecordMapping):
+class Topic(Entity):
     id: int
     title: str
     user_id: int
@@ -150,7 +150,7 @@ def test_parse_foreignkey_column_not_exists():
         assert '$user:xxxx' in e.value
 
 
-def f(val) -> RecordMappingField:
+def f(val) -> EntityField:
     return val
 
 
@@ -207,7 +207,7 @@ def test_parse_foreignkey():
     assert 'topic' in q.foreign_keys
 
     t = q.foreign_keys['topic']
-    assert t.from_table == Topic
+    assert t.entity == Topic
     assert t.select == [Topic.id, Topic.title, Topic.user_id]
     assert len(t.conditions.items) == 1
 

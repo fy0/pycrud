@@ -6,6 +6,7 @@ from functools import reduce
 from typing import Dict, Type, Union, List, Iterable, Any, Tuple, Set
 
 import pypika
+from multidict import MultiDict
 from pypika import Query, Order
 from pypika.enums import Arithmetic, Comparator
 from pypika.functions import Count, DistinctOptionFunction
@@ -15,10 +16,11 @@ from pypika.terms import ComplexCriterion, Parameter, Field as PypikaField, Arit
 from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycrud.crud.base_crud import BaseCrud
 from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
+from pycrud.error import ValueTypeNotAllowed
 from pycrud.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr
-from pycrud.types import RecordMapping, RecordMappingField, IDList
+from pycrud.types import Entity, EntityField, IDList
 from pycrud.utils.json_ex import json_dumps_ex
-from pycrud.values import ValuesToWrite, ValuesDataFlag
+from pycrud.values import ValuesToUpdate, ValuesDataUpdateFlag, ValuesToCreate
 
 _sql_method_map = {
     # '+': '__pos__',
@@ -123,9 +125,12 @@ class SQLExecuteResult:
         return iter(self.values)
 
 
+InsertValueTypes = Union[ValuesToCreate, Entity, Dict, MultiDict]
+
+
 @dataclass
 class SQLCrud(BaseCrud):
-    mapping2model: Dict[Type[RecordMapping], Union[str, pypika.Table]]
+    entity2model: Dict[Type[Entity], Union[str, pypika.Table]]
 
     def __post_init__(self):
         self.json_dumps_func = json_dumps_ex
@@ -136,21 +141,46 @@ class SQLCrud(BaseCrud):
             # }
         }
 
-        for k, v in self.mapping2model.items():
+        for k, v in self.entity2model.items():
             if isinstance(v, str):
-                self.mapping2model[k] = pypika.Table(v)
+                self.entity2model[k] = pypika.Table(v)
 
             self._table_cache[k] = {
                 'array_fields': set(),
                 'json_fields': set(),
             }
 
-    async def insert_many(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite], *, _perm=None) -> IDList:
-        when_complete = []
-        await table.on_insert(values_list, when_complete, _perm)
+    async def insert_many(self, entity: Type[Entity], values_list: Iterable[InsertValueTypes], *, _perm=None) -> IDList:
+        """
+        Insert multiple entries.
+        return id list if succeed.
+        `entity.on_insert` will be called before insert operation.
 
-        model = self.mapping2model[table]
-        tc = self._table_cache[table]
+        :param entity:
+        :param values_list:
+        :param _perm:
+        :return:
+        """
+        when_complete = []
+
+        values_list_new = []
+        for i in values_list:
+            if isinstance(i, ValuesToCreate):
+                values_list_new.append(i)
+            elif isinstance(i, (Entity, Dict, MultiDict)):
+                values_list_new.append(ValuesToCreate(i, entity))
+            else:
+                raise ValueTypeNotAllowed('value type not allowed: ', type(i))
+
+        values_list = values_list_new
+
+        for i in values_list:
+            i.bind(entity)
+
+        await entity.on_insert(values_list, when_complete, _perm)
+
+        model = self.entity2model[entity]
+        tc = self._table_cache[entity]
         sql_lst = []
 
         for i in values_list:
@@ -170,14 +200,28 @@ class SQLCrud(BaseCrud):
 
         return id_lst
 
-    async def update(self, info: QueryInfo, values: ValuesToWrite, *, _perm=None) -> IDList:
-        # hook
-        await info.from_table.on_query(info, _perm)
-        when_before_update, when_complete = [], []
-        await info.from_table.on_update(info, values, when_before_update, when_complete, _perm)
+    async def update(self, info: QueryInfo, values: ValuesToUpdate, *, _perm=None) -> IDList:
+        """
+        Update multiple data.
+        Select data with `info`, update with `values`.
+        return id list if succeed.
 
-        model = self.mapping2model[info.from_table]
-        tc = self._table_cache[info.from_table]
+        `entity.on_query` will be called before select operation.
+        `entity.on_update` will be called before update operation.
+
+        :param info:
+        :param values:
+        :param _perm:
+        :return:
+        """
+        # hook
+        await info.entity.on_query(info, _perm)
+        when_before_update, when_complete = [], []
+        values.bind(info.entity)
+        await info.entity.on_update(info, values, when_before_update, when_complete, _perm)
+
+        model = self.entity2model[info.entity]
+        tc = self._table_cache[info.entity]
         qi = info.clone()
         qi.select = []
         lst = await self.get_list(qi, _perm=_perm)
@@ -196,31 +240,31 @@ class SQLCrud(BaseCrud):
                 val = phg.next(v, left_is_array=k in tc['array_fields'], left_is_json=k in tc['json_fields'])
 
                 if vflag:
-                    if vflag == ValuesDataFlag.INCR:
+                    if vflag == ValuesDataUpdateFlag.INCR:
                         # f'{k} + {val}'
                         sql = sql.set(k, ArithmeticExpression(Arithmetic.add, PypikaField(k), val))
 
-                    elif vflag == ValuesDataFlag.DECR:
+                    elif vflag == ValuesDataUpdateFlag.DECR:
                         # f'{k} - {val}'
                         sql = sql.set(k, ArithmeticExpression(Arithmetic.sub, PypikaField(k), val))
 
-                    elif vflag == ValuesDataFlag.ARRAY_EXTEND:
+                    elif vflag == ValuesDataUpdateFlag.ARRAY_EXTEND:
                         # f'{k} || {val}'
                         vexpr = ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val)
                         sql = sql.set(k, vexpr)
 
-                    elif vflag == ValuesDataFlag.ARRAY_PRUNE:
+                    elif vflag == ValuesDataUpdateFlag.ARRAY_PRUNE:
                         # TODO: 现在prune也会去重，这是不对的
                         # f'array(SELECT unnest({k}) EXCEPT SELECT unnest({val}))'
                         vexpr = PostgresArrayDifference(PypikaField(k), val)
                         sql = sql.set(k, vexpr)
 
-                    elif vflag == ValuesDataFlag.ARRAY_EXTEND_DISTINCT:
+                    elif vflag == ValuesDataUpdateFlag.ARRAY_EXTEND_DISTINCT:
                         # f'ARRAY(SELECT DISTINCT unnest({k} || {val}))'
                         vexpr = PostgresArrayDistinct(ArithmeticExpression(ArithmeticExt.concat, PypikaField(k), val))
                         sql = sql.set(k, vexpr)
 
-                    elif vflag == ValuesDataFlag.ARRAY_PRUNE_DISTINCT:
+                    elif vflag == ValuesDataUpdateFlag.ARRAY_PRUNE_DISTINCT:
                         vexpr = PostgresArrayDifference(PypikaField(k), val)
                         sql = sql.set(k, vexpr)
 
@@ -237,9 +281,21 @@ class SQLCrud(BaseCrud):
         return id_lst
 
     async def delete(self, info: QueryInfo, *, _perm=None) -> IDList:
-        model = self.mapping2model[info.from_table]
+        """
+        Delete multiple data.
+        Select data with `info`.
+        return id list if succeed.
+
+        `entity.on_query` will be called before select operation.
+        `entity.on_delete` will be called before update operation.
+
+        :param info:
+        :param _perm:
+        :return:
+        """
+        model = self.entity2model[info.entity]
         when_before_delete, when_complete = [], []
-        await info.from_table.on_delete(info, when_before_delete, when_complete, _perm)
+        await info.entity.on_delete(info, when_before_delete, when_complete, _perm)
 
         qi = info.clone()
         qi.select = []
@@ -261,13 +317,25 @@ class SQLCrud(BaseCrud):
 
         return id_lst
 
-    async def get_list(self, info: QueryInfo, with_count=False, *, _perm=None) -> QueryResultRowList:
-        # hook
-        await info.from_table.on_query(info, _perm)
-        when_complete = []
-        await info.from_table.on_read(info, when_complete, _perm)
+    async def get_list(self, info: QueryInfo, return_with_rows_count=False, *, _perm=None) -> QueryResultRowList:
+        """
+        Select multiple data.
+        Select data with `info`.
 
-        model = self.mapping2model[info.from_table]
+        `entity.on_query` will be called before select operation.
+        `entity.on_read` will be called before select operation.
+
+        :param info:
+        :param return_with_rows_count:
+        :param _perm:
+        :return:
+        """
+        # hook
+        await info.entity.on_query(info, _perm)
+        when_complete = []
+        await info.entity.on_read(info, when_complete, _perm)
+
+        model = self.entity2model[info.entity]
 
         # 选择项
         q = Query()
@@ -275,7 +343,7 @@ class SQLCrud(BaseCrud):
 
         select_fields = [model.id]
         for i in info.select_for_crud:
-            select_fields.append(getattr(self.mapping2model[i.table], i.name))
+            select_fields.append(getattr(self.entity2model[i.entity], i.name))
 
         q = q.select(*select_fields)
         phg = self.get_placeholder_generator()
@@ -297,10 +365,10 @@ class SQLCrud(BaseCrud):
                             return reduce(ComplexCriterion.__or__, items)
 
                 elif isinstance(c, ConditionExpr):
-                    field = getattr(self.mapping2model[c.column.table], c.column.name)
+                    field = getattr(self.entity2model[c.column.entity], c.column.name)
 
-                    if isinstance(c.value, RecordMappingField):
-                        real_value = getattr(self.mapping2model[c.value.table], c.value.name)
+                    if isinstance(c.value, EntityField):
+                        real_value = getattr(self.entity2model[c.value.entity], c.value.name)
                     else:
                         contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS,
                                                      QUERY_OP_RELATION.CONTAINS_ANY)
@@ -328,7 +396,7 @@ class SQLCrud(BaseCrud):
 
             if info.join:
                 for ji in info.join:
-                    jtable = self.mapping2model[ji.table]
+                    jtable = self.entity2model[ji.table]
                     where = solve_condition(ji.conditions)
 
                     if ji.limit == -1:
@@ -344,8 +412,8 @@ class SQLCrud(BaseCrud):
 
         ret = QueryResultRowList()
 
-        # count
-        if with_count:
+        # rows count
+        if return_with_rows_count:
             bak = q._selects
             q._selects = [Count('1')]
             cursor = await self.execute_sql(q.get_sql(), phg)
@@ -370,7 +438,7 @@ class SQLCrud(BaseCrud):
 
         for i in cursor:
             it = iter(i)
-            ret.append(QueryResultRow(next(it), list(it), info, info.from_table))
+            ret.append(QueryResultRow(next(it), list(it), info, info.table))
 
         for i in when_complete:
             await i(ret)

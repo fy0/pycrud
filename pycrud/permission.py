@@ -7,7 +7,7 @@ from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterabl
 from typing_extensions import Literal
 
 if TYPE_CHECKING:
-    from pycrud.types import RecordMappingField, RecordMapping
+    from pycrud.types import EntityField, Entity
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +49,13 @@ class RoleDefine:
         self.rebind()
 
     def rebind(self):
-        self._ability_table: Dict[Type['RecordMapping'], Dict[Union[A, ALLOW_DELETE], Set['RecordMappingField']]] = {}
+        self._ability_table: Dict[Type['Entity'], Dict[Union[A, ALLOW_DELETE], Set['EntityField']]] = {}
         # self._table_type: Optional[Type['RecordMapping']] = None
 
         if self.based_on:
             self._ability_table = copy.deepcopy(self.based_on._ability_table)
 
-        def solve_data(table: Type['RecordMapping'], table_perm: TablePerm) -> Dict[str, Set[A]]:
+        def solve_data(table: Type['Entity'], table_perm: TablePerm) -> Dict[str, Set[A]]:
             """
             整合默认值和叠加值，生成一份权限数据
             :param table:
@@ -88,7 +88,7 @@ class RoleDefine:
             return tmp
 
         for k, v in self.permission_desc.items():
-            k: Type['RecordMapping']
+            k: Type['Entity']
             v: TablePerm
 
             table_columns_by_ability = self._ability_table.get(k, {})
@@ -101,13 +101,13 @@ class RoleDefine:
 
             self._ability_table[k] = table_columns_by_ability
 
-    def get_perm_avail(self, table: Type['RecordMapping'], ability: A) -> Set[Any]:
+    def get_perm_avail(self, table: Type['Entity'], ability: A) -> Set[Any]:
         t = self._ability_table.get(table)
         if t:
             return t.get(ability, set())
         return set()
 
-    def can_delete(self, table: Type['RecordMapping']) -> bool:
+    def can_delete(self, table: Type['Entity']) -> bool:
         t = self._ability_table.get(table)
         return t[ALLOW_DELETE] if t else False
 

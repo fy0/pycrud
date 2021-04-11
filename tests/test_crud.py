@@ -7,20 +7,20 @@ from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.crud.query_result_row import QueryResultRow
 from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
-from pycrud.types import RecordMapping
-from pycrud.values import ValuesToWrite
+from pycrud.types import Entity
+from pycrud.values import ValuesToUpdate, ValuesToCreate
 
 pytestmark = [pytest.mark.asyncio]
 
 
-class User(RecordMapping):
+class User(Entity):
     id: Optional[int]
     nickname: str
     username: str
     password: str = 'password'
 
 
-class Topic(RecordMapping):
+class Topic(Entity):
     id: Optional[int]
     title: str
     user_id: int
@@ -192,7 +192,7 @@ async def test_crud_read_with_count():
 
     i = QueryInfo.from_json(Topic, {})
     i.limit = 1
-    ret = await c.get_list(i, with_count=True)
+    ret = await c.get_list(i, return_with_rows_count=True)
     assert len(ret) == 1
     assert ret.rows_count == MTopics.select().count()
 
@@ -223,7 +223,7 @@ async def test_crud_write_success():
         Topic: MTopics,
     }, db)
 
-    v = ValuesToWrite({
+    v = ValuesToUpdate({
         'user_id': '444',
         'content': 'welcome'
     }, Topic).bind()
@@ -243,13 +243,13 @@ async def test_crud_insert_success():
         Topic: MTopics,
     }, db)
 
-    v = ValuesToWrite({
+    v = ValuesToCreate({
         'title': 'test',
         'user_id': 1,
         'content': 'insert1',
         'time': 123
     }, Topic)
-    v.bind(True)
+    v.bind()
 
     ret = await c.insert_many(Topic, [v])
     assert ret == [5]

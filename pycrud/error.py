@@ -3,6 +3,10 @@ class PyCrudException(Exception):
     pass
 
 
+class ValueTypeNotAllowed(PyCrudException):
+    pass
+
+
 class DBException(PyCrudException):
     pass
 

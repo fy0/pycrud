@@ -9,13 +9,13 @@ from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.crud.query_result_row import QueryResultRow
 from pycrud.crud.sql_crud import PlaceHolderGenerator, SQLExecuteResult
 from pycrud.query import QueryInfo
-from pycrud.types import RecordMapping
-from pycrud.values import ValuesToWrite
+from pycrud.types import Entity
+from pycrud.values import ValuesToUpdate
 
 pytestmark = [pytest.mark.asyncio]
 
 
-class TableOne(RecordMapping):
+class TableOne(Entity):
     id: Optional[int]
     arr: List[str] = Field(default_factory=lambda: [])
 
@@ -51,25 +51,25 @@ def crud_db_init():
 
 async def test_crud_array_extend():
     c, db, TableOneModel = crud_db_init()
-    await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
+    await c.update(QueryInfo.from_table(TableOne), values=ValuesToUpdate({
         'arr.array_extend': ['aa', 'bb']
-    }, table=TableOne, try_parse=True))
+    }, entity=TableOne).bind())
     assert c.last_sql == 'UPDATE "table_one" SET "arr"="arr"||? WHERE "id" IN (?)'
 
 
 async def test_crud_array_extend_distinct():
     c, db, TableOneModel = crud_db_init()
-    await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
+    await c.update(QueryInfo.from_table(TableOne), values=ValuesToUpdate({
         'arr.array_extend_distinct': ['aa', 'bb']
-    }, table=TableOne, try_parse=True))
+    }, entity=TableOne).bind())
     assert c.last_sql == 'UPDATE "table_one" SET "arr"=ARRAY(SELECT DISTINCT unnest("arr"||?)) WHERE "id" IN (?)'
 
 
 async def test_crud_array_prune_distinct():
     c, db, TableOneModel = crud_db_init()
-    await c.update(QueryInfo.from_table_raw(TableOne), values=ValuesToWrite({
+    await c.update(QueryInfo.from_table(TableOne), values=ValuesToUpdate({
         'arr.array_prune_distinct': ['aa', 'bb']
-    }, table=TableOne, try_parse=True))
+    }, entity=TableOne).bind())
     assert c.last_sql == 'UPDATE "table_one" SET "arr"=array(SELECT unnest("arr") EXCEPT SELECT unnest(?)) WHERE "id" IN (?)'
 
 

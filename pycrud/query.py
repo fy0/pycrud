@@ -8,7 +8,7 @@ from typing_extensions import Literal
 from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
 from pycrud.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
     InvalidOrderSyntax, InvalidQueryConditionOperator
-from pycrud.types import RecordMapping, RecordMappingField
+from pycrud.types import Entity, EntityField
 
 
 class LogicRelation:
@@ -44,12 +44,12 @@ class SelectExpr:
     """
     $ta.id
     """
-    column: Union[RecordMappingField, Any]
+    column: Union[EntityField, Any]
     alias: str = None
 
     @property
     def table_name(self):
-        return self.column.table.table_name
+        return self.column.entity.table_name
 
 
 @dataclass
@@ -76,7 +76,7 @@ class QueryField:
 
 @dataclass
 class QueryOrder:
-    column: RecordMappingField
+    column: EntityField
     order: Union[Literal['asc', 'desc', 'default']] = 'default'
 
     def __eq__(self, other):
@@ -88,7 +88,7 @@ class QueryOrder:
         return '<QueryOrder %r.%s>' % (self.column, self.order)
 
     @classmethod
-    def from_text(cls, table: Type[RecordMapping], text):
+    def from_text(cls, table: Type[Entity], text):
         """
         :param text: order=id.desc, xxx.asc
         :return: [
@@ -135,16 +135,16 @@ class ConditionExpr:
     $ta:id.eq = 123
     $ta:id.eq = $tb:id
     """
-    column: Union[RecordMappingField, Any]  # 实际类型是 RecordMappingField，且必须如此
+    column: Union[EntityField, Any]  # 实际类型是 RecordMappingField，且必须如此
     op: Union[QUERY_OP_COMPARE, QUERY_OP_RELATION]
-    value: Union[RecordMappingField, Any]
+    value: Union[EntityField, Any]
 
     def __post_init__(self):
-        assert isinstance(self.column, RecordMappingField), 'RecordMappingField excepted, got %s' % type(self.column)
+        assert isinstance(self.column, EntityField), 'RecordMappingField excepted, got %s' % type(self.column)
 
     @property
     def table_name(self) -> str:
-        return self.column.table.table_name
+        return self.column.entity.table_name
 
     def __and__(self, other: Union['ConditionExpr', 'ConditionLogicExpr', 'UnaryExpr']) -> 'ConditionLogicExpr':
         return ConditionLogicExpr('and', [self, other])
@@ -198,8 +198,8 @@ def check_same_expr(a: AllExprType, b: AllExprType) -> bool:
     if isinstance(a, NegatedExpr):
         return check_same_expr(a.expr, b.expr)
 
-    elif isinstance(a, RecordMappingField):
-        return a.table == b.table and a.name == b.name
+    elif isinstance(a, EntityField) and isinstance(b, EntityField):
+        return a.entity == b.entity and a.name == b.name
 
     elif isinstance(a, ConditionExpr):
         if a.op != b.op:
@@ -233,7 +233,7 @@ def check_same_expr(a: AllExprType, b: AllExprType) -> bool:
 
 @dataclass
 class QueryJoinInfo:
-    table: Type[RecordMapping]
+    table: Type[Entity]
     conditions: QueryConditions
     type: Union[Literal['inner', 'left']] = 'left'
     limit: int = -1  # unlimited
@@ -299,10 +299,14 @@ class QueryInfo:
     }
     // 关键字：$select、$select-，$order-by，$foreign-key，$or，$and
     """
-    from_table: Type[RecordMapping]
+    entity: Type[Entity]
 
-    select: List[Union[RecordMappingField, Any]] = field(default_factory=lambda: [])
-    select_exclude: Set[Union[RecordMappingField, Any]] = None
+    @property
+    def table(self):
+        return self.entity
+
+    select: List[Union[EntityField, Any]] = field(default_factory=lambda: [])
+    select_exclude: Set[Union[EntityField, Any]] = None
 
     conditions: QueryConditions = None
     order_by: List[QueryOrder] = field(default_factory=lambda: [])
@@ -313,7 +317,7 @@ class QueryInfo:
     limit: int = 20
 
     join: List[QueryJoinInfo] = None
-    select_hidden: Set[Union[RecordMappingField, Any]] = field(default_factory=lambda: set())
+    select_hidden: Set[Union[EntityField, Any]] = field(default_factory=lambda: set())
 
     def __post_init__(self):
         self._select = None
@@ -340,7 +344,7 @@ class QueryInfo:
         return self._select
 
     @classmethod
-    def from_table_raw(cls, table, select=None, where=None, *, select_exclude=None):
+    def from_table(cls, table, select=None, where=None, *, select_exclude=None):
         get_items = lambda keys: [getattr(table, x) for x in keys]
         if select is None:
             select = get_items(table.record_fields.keys())
@@ -353,7 +357,7 @@ class QueryInfo:
         )
 
     @classmethod
-    def from_json(cls, table: Type[RecordMapping], data, from_http_query=False, check_cond_with_field=False):
+    def from_json(cls, table: Type[Entity], data, from_http_query=False, check_cond_with_field=False):
         assert table, 'table must be exists'
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)
@@ -389,7 +393,7 @@ class QueryInfo:
                 if isinstance(value, str) and value.startswith('$'):
                     if ':' in value:
                         a, b = value.split(':', 1)
-                        t = RecordMapping.all_mappings.get(a[1:])
+                        t = Entity.all_mappings.get(a[1:])
                         try:
                             return getattr(t, b)
                         except AttributeError:

@@ -7,7 +7,7 @@ from pycrud.crud.query_result_row import QueryResultRow
 from pycrud.error import PermissionException, InvalidQueryValue
 from pycrud.permission import RoleDefine, TablePerm, A
 from pycrud.query import QueryInfo
-from pycrud.values import ValuesToWrite
+from pycrud.values import ValuesToUpdate, ValuesToCreate
 from tests.test_crud import crud_db_init, User
 
 pytestmark = [pytest.mark.asyncio]
@@ -97,7 +97,7 @@ async def test_crud_perm_write():
     with pytest.raises(InvalidQueryValue):
         ret = await c.update_with_perm(
             QueryInfo.from_json(User, {'id.eq': 5}),
-            ValuesToWrite({'nickname': 'aaa'}, User).bind(),
+            ValuesToUpdate({'nickname': 'aaa'}, User).bind(),
             perm=PermInfo(True, None, permission['visitor'])
         )
         assert len(ret) == 0  # all filtered
@@ -105,7 +105,7 @@ async def test_crud_perm_write():
     # not check
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite({'nickname': 'aaa'}, User).bind(),
+        ValuesToUpdate({'nickname': 'aaa'}, User).bind(),
         perm=PermInfo(False, None, permission['visitor'])
     )
     assert len(ret) == 1
@@ -114,7 +114,7 @@ async def test_crud_perm_write():
     # perm user
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite({'nickname': 'ccc'}, User).bind(),
+        ValuesToUpdate({'nickname': 'ccc'}, User).bind(),
         perm=PermInfo(True, None, permission['user'])
     )
     assert len(ret) == 1
@@ -123,7 +123,7 @@ async def test_crud_perm_write():
     # returning
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
-        ValuesToWrite({'nickname': 'ccc'}, User).bind(),
+        ValuesToUpdate({'nickname': 'ccc'}, User).bind(),
         perm=PermInfo(True, None, permission['user']),
         returning=True
     )
@@ -195,7 +195,7 @@ async def test_crud_perm_insert():
     with pytest.raises(ValidationError):
         ret = await c.insert_many_with_perm(
             User,
-            [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User)],
+            [ValuesToCreate({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User)],
             perm=PermInfo(True, None, role_visitor)
         )
         assert len(ret) == 0  # all filtered
@@ -203,7 +203,7 @@ async def test_crud_perm_insert():
     # perm user
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite({'id': 10, 'nickname': 'aaa', 'username': 'u1'})],
+        [ValuesToUpdate({'id': 10, 'nickname': 'aaa', 'username': 'u1'})],
         perm=PermInfo(True, None, role_user)
     )
     assert len(ret) == 1
@@ -214,7 +214,7 @@ async def test_crud_perm_insert():
     # perm not check
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite({'nickname': 'qqqq', 'username': 'u1'}, User).bind(True)],
+        [ValuesToCreate({'nickname': 'qqqq', 'username': 'u1'}, User).bind()],
         perm=PermInfo(False, None, role_visitor)
     )
     assert len(ret) == 1
@@ -222,7 +222,7 @@ async def test_crud_perm_insert():
     # with returning
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToWrite({'nickname': 'wwww', 'username': 'u2'}, User).bind(check_insert=True)],
+        [ValuesToCreate({'nickname': 'wwww', 'username': 'u2'}, User).bind()],
         perm=PermInfo(False, None, role_visitor),
         returning=True
     )

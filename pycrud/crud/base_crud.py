@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, Union, List, Type, Iterable
+from typing import Any, Dict, Union, List, Type, Iterable, Optional
 
 import pydantic
 
@@ -10,15 +10,15 @@ from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycrud.error import PermissionException, InvalidQueryValue
 from pycrud.permission import RoleDefine, A
 from pycrud.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr, UnaryExpr
-from pycrud.types import RecordMapping, IDList, RecordMappingField
-from pycrud.values import ValuesToWrite
+from pycrud.types import Entity, IDList, EntityField
+from pycrud.values import ValuesToUpdate
 
 
 @dataclass
 class PermInfo:
     is_check: bool
     user: Any
-    role: 'RoleDefine'
+    role: Optional['RoleDefine']
 
     def __bool__(self):
         return self.is_check
@@ -28,7 +28,7 @@ class PermInfo:
 class BaseCrud(CoreCrud, ABC):
     permission: Any
 
-    async def solve_returning(self, table: Type[RecordMapping], id_lst: IDList, info: QueryInfo = None,
+    async def solve_returning(self, table: Type[Entity], id_lst: IDList, info: QueryInfo = None,
                               perm: PermInfo = None):
         if info:
             selects = info.select_for_crud
@@ -47,8 +47,8 @@ class BaseCrud(CoreCrud, ABC):
     @staticmethod
     async def _solve_query(info: QueryInfo, perm: PermInfo):
         if perm.is_check:
-            allow_query = perm.role.get_perm_avail(info.from_table, A.QUERY)
-            allow_read = perm.role.get_perm_avail(info.from_table, A.READ)
+            allow_query = perm.role.get_perm_avail(info.table, A.QUERY)
+            allow_read = perm.role.get_perm_avail(info.table, A.READ)
 
             def sub_solve_items(items):
                 if items:
@@ -72,7 +72,7 @@ class BaseCrud(CoreCrud, ABC):
                         # permission
                         return None
 
-                    if isinstance(c.value, RecordMappingField):
+                    if isinstance(c.value, EntityField):
                         if c.value not in allow_query:
                             # permission
                             return None
@@ -89,7 +89,7 @@ class BaseCrud(CoreCrud, ABC):
 
         return info
 
-    async def insert_many_with_perm(self, table: Type[RecordMapping], values_list: Iterable[ValuesToWrite],
+    async def insert_many_with_perm(self, entity: Type[Entity], values_list: Iterable[ValuesToUpdate],
                                     returning=False, *, perm: PermInfo = None) -> Union[IDList, List[QueryResultRow]]:
         values_list_new = []
 
@@ -97,7 +97,7 @@ class BaseCrud(CoreCrud, ABC):
             perm = PermInfo(False, None, None)
 
         if perm.is_check:
-            avail = perm.role.get_perm_avail(table, A.CREATE)
+            avail = perm.role.get_perm_avail(entity, A.CREATE)
 
         for i in values_list:
             if perm.is_check:
@@ -105,27 +105,27 @@ class BaseCrud(CoreCrud, ABC):
                     del i[j]
 
             try:
-                i.bind(True, table=table)
+                i.bind(entity)
                 if i:
                     values_list_new.append(i)
             except pydantic.ValidationError as e:
                 # TODO: 权限检查之后过不了检验的后面再处置
                 raise e
 
-        lst = await self.insert_many(table, values_list_new, _perm=perm)
+        lst = await self.insert_many(entity, values_list_new, _perm=perm)
 
         if returning:
-            return await self.solve_returning(table, lst, perm=perm)
+            return await self.solve_returning(entity, lst, perm=perm)
 
         return lst
 
-    async def update_with_perm(self, info: QueryInfo, values: ValuesToWrite, returning=False,
+    async def update_with_perm(self, info: QueryInfo, values: ValuesToUpdate, returning=False,
                                *, perm: PermInfo = None) -> Union[List[Any], List[QueryResultRow]]:
         if perm is None:
             perm = PermInfo(False, None, None)
 
         if perm.is_check:
-            avail = perm.role.get_perm_avail(info.from_table, A.UPDATE)
+            avail = perm.role.get_perm_avail(info.table, A.UPDATE)
             rest = []
 
             for j in values.keys():
@@ -141,7 +141,7 @@ class BaseCrud(CoreCrud, ABC):
                 del values[i]
 
         try:
-            values.bind(False, table=info.from_table)
+            values.bind(info.entity)
         except pydantic.ValidationError:
             # TODO: 权限检查之后过不了检验的后面再处置
             pass
@@ -153,7 +153,7 @@ class BaseCrud(CoreCrud, ABC):
         lst = await self.update(info, values, _perm=perm)
 
         if returning:
-            return await self.solve_returning(info.from_table, lst, info, perm=perm)
+            return await self.solve_returning(info.table, lst, info, perm=perm)
 
         return lst
 
@@ -161,8 +161,8 @@ class BaseCrud(CoreCrud, ABC):
         if perm is None:
             perm = PermInfo(False, None, None)
         if perm.is_check:
-            if not perm.role.can_delete(info.from_table):
-                raise PermissionException('delete', info.from_table)
+            if not perm.role.can_delete(info.table):
+                raise PermissionException('delete', info.table)
 
         info = await self._solve_query(info, perm)
         return await self.delete(info, _perm=perm)
@@ -195,13 +195,13 @@ class BaseCrud(CoreCrud, ABC):
                 limit = -1 if raw_name.endswith('[]') else 1
 
                 # 上级ID，数据，查询条件
-                q = QueryInfo(main_table, [query.from_table.id, *query.select])
+                q = QueryInfo(main_table, [query.entity.id, *query.select])
                 q.conditions = QueryConditions([ConditionExpr(main_table.id, QUERY_OP_RELATION.IN, pk_items)])
-                q.join = [QueryJoinInfo(query.from_table, query.conditions, limit=limit)]
+                q.join = [QueryJoinInfo(query.entity, query.conditions, limit=limit)]
 
                 elist = []
                 for x in await self.get_list_with_perm(q, perm=perm):
-                    x.base = query.from_table
+                    x.base = query.entity
                     elist.append(x)
 
                 extra: Dict[Any, Union[List, QueryResultRow]] = {}
@@ -222,7 +222,7 @@ class BaseCrud(CoreCrud, ABC):
                         i.extra[raw_name] = extra.get(i.raw_data[0])
 
                 if query.foreign_keys:
-                    await solve(elist, query.from_table, query.foreign_keys, depth + 1)
+                    await solve(elist, query.entity, query.foreign_keys, depth + 1)
 
-        await solve(ret, info.from_table, info.foreign_keys)
+        await solve(ret, info.entity, info.foreign_keys)
         return ret

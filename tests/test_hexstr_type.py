@@ -1,9 +1,9 @@
 from pycrud.pydantic_ext.hex_string import HexString
 from pycrud.query import QueryInfo, ConditionLogicExpr
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 
 
-class User(RecordMapping):
+class User(Entity):
     id: int
     nickname: str
     token: HexString

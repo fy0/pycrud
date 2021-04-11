@@ -2,181 +2,216 @@
 
 [![codecov](https://codecov.io/gh/fy0/pycrud/branch/master/graph/badge.svg)](https://codecov.io/gh/fy0/pycrud)
 
-A common crud framework for web.
+An async crud framework for RESTful API.
 
 Features:
 
-* Generate query by json or dsl
+* Do CRUD operations by json.
+
+* Easy to integrate with web framework.
+
+* Works with popular orm.
 
 * Role based permission system
 
-* Easy to integrate with web framework
+* Data validate with pydantic.
 
 * Tested coveraged
 
 
 ### Examples:
 
-#### Define
+#### CRUD service by peewee and fastapi
 
 ```python
 from typing import Optional
 
+import peewee
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from playhouse.db_url import connect
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
-from pycrud.types import RecordMapping
+from pycrud.query import QueryInfo
+from pycrud.types import Entity
+from pycrud.values import ValuesToUpdate
 
-class User(RecordMapping):
+
+# ORM Initialize
+
+db = connect("sqlite:///:memory:")
+
+
+class UserModel(peewee.Model):
+    nickname = peewee.TextField()
+    username = peewee.TextField()
+    password = peewee.TextField(default='password')  # just for example
+
+    class Meta:
+        table_name = 'users'
+        database = db
+
+
+db.create_tables([UserModel])
+
+
+# Crud Initialize
+
+class User(Entity):
     id: Optional[int]
     nickname: str
     username: str
     password: str = 'password'
 
 
-db = connect("sqlite:///:memory:")
-
 c = PeeweeCrud(None, {
     User: 'users'
 }, db)
 
+
+# Web Service
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/user/create")
+async def user_create(item: User):
+    return await c.insert_many(User, [item])  # response id list: [1]
+
+
+@app.get("/user/list")
+async def user_list(request: Request):
+    q = QueryInfo.from_json(User, request.query_params, True)
+    return [x.to_dict() for x in await c.get_list(q)]
+
+
+@app.post("/user/update")
+async def user_list(request: Request, item: User.partial_model):
+    q = QueryInfo.from_json(User, request.query_params, True)
+    return await c.update(q, ValuesToUpdate(item))
+
+
+@app.post("/user/delete")
+async def user_delete(request: Request):
+    q = QueryInfo.from_json(User, request.query_params, True)
+    return await c.delete(q)  # response id list: [1]
+
+
+print('Service Running ...')
+uvicorn.run(app, host='0.0.0.0', port=3000)
+
 ```
 
-#### Create
+#### Query filter
 
 ```python
-from pycrud.values import ValuesToWrite
-
-v = ValuesToWrite({'nickname': 'wwww', 'username': 'u2'})
-lst = await c.insert_many(User, [v])
-
-print(lst)
-```
-
-#### Read
-
-```python
+from pycrud.values import ValuesToUpdate
 from pycrud.query import QueryInfo
 
-# from dsl
-lst = await c.get_list(QueryInfo.from_table_raw(User, where=[
-    User.id != 1
-]))
 
-# from json
-lst = await c.get_list(QueryInfo.from_json(User, {
-    'id.eq': 1
-}))
+async def fetch_list():
+    # dsl version
+    q1 = QueryInfo.from_table(User, where=[
+        User.id == 1
+    ])
 
-print([x.to_dict() for x in lst])
-```
+    # json verison
+    q2 = QueryInfo.from_json(User, {
+        'id.eq': 1
+    })
 
-#### Update
-
-```python
-from pycrud.query import QueryInfo
-from pycrud.values import ValuesToWrite
-
-v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
-
-# from dsl
-lst = await c.update(QueryInfo.from_table_raw(User, where=[
-    User.id.in_([1, 2, 3])
-]))
-
-# from json
-lst = await c.update(QueryInfo.from_json(User, {
-    'id.in': [1,2,3]
-}), v)
-
-print(lst)
-```
-
-#### Delete
-
-```python
-from pycrud.query import QueryInfo
-
-lst = await c.delete(QueryInfo.from_json(User, {
-    'id.in': [1,2,3]
-}))
-
-print(lst)
-```
-
-### Query by json
-
-```python
-from pycrud.query import QueryInfo
-
-# $or: (id < 3) or (id > 5)
-QueryInfo.from_json(User, {
-    '$or': {
-        'id.lt': 3,  
-        'id.gt': 5 
-    }
-})
-
-# $and: 3 < id < 5
-QueryInfo.from_json(User, {
-    '$and': {
-        'id.gt': 3,  
-        'id.lt': 5 
-    }
-})
+    lst = await c.get_list(q1)
+    print([x.to_dict() for x in lst])
 
 
-# $not: not (3 < id < 5)
-QueryInfo.from_json(User, {
-    '$not': {
-        'id.gt': 3,  
-        'id.lt': 5 
-    }
-})
+async def update_by_ids():
+    v = ValuesToWrite({'nickname': 'bbb', 'username': 'u2'})
 
-# multiple same operator: (id == 3) or (id == 4) or (id == 5)
-QueryInfo.from_json(User, {
-    '$or': {
-        'id.eq': 3,  
-        'id.eq.2': 4,
-        'id.eq.3': 5, 
-    }
-})
+    # from dsl
+    q1 = QueryInfo.from_table(User, where=[
+        User.id.in_([1, 2, 3])
+    ])
 
-# multiple same operator: (3 < id < 5) or (10 < id < 15)
-QueryInfo.from_json(User, {
-    '$or': {
-        '$and': {
-            'id.gt': 3,
-            'id.lt': 5
-        },
-        '$and.2': {
-            'id.gt': 10,
-            'id.lt': 15
+    q2 = QueryInfo.from_json(User, {
+        'id.in': [1,2,3]
+    })
+
+    lst = await c.update(q1, v)
+    print(lst)
+
+
+async def complex_filter_dsl():
+    # $or: (id < 3) or (id > 5)
+    (User.id < 3) | (User.id > 5)
+
+    # $and: 3 < id < 5
+    (User.id > 3) & (User.id < 5)
+
+    # $not: not (3 < id < 5)
+    ~((User.id > 3) & (User.id < 5))
+    
+    # logical condition: (id == 3) or (id == 4) or (id == 5)
+    (User.id != 3) | (User.id != 4) | (User.id != 5)
+
+    # logical condition: (3 < id < 5) or (10 < id < 15)
+    ((User.id > 3) & (User.id < 5)) | ((User.id > 10) & (User.id < 15))
+
+
+async def complex_filter_json():
+    # $or: (id < 3) or (id > 5)
+    QueryInfo.from_json(User, {
+        '$or': {
+            'id.lt': 3,  
+            'id.gt': 5 
         }
-    }
-})
+    })
+    
+    # $and: 3 < id < 5
+    QueryInfo.from_json(User, {
+        '$and': {
+            'id.gt': 3,  
+            'id.lt': 5 
+        }
+    })
+    
+    # $not: not (3 < id < 5)
+    QueryInfo.from_json(User, {
+        '$not': {
+            'id.gt': 3,  
+            'id.lt': 5 
+        }
+    })
 
+    # logical condition: (id == 3) or (id == 4) or (id == 5)
+    QueryInfo.from_json(User, {
+        '$or': {
+            'id.eq': 3,  
+            'id.eq.2': 4,
+            'id.eq.3': 5, 
+        }
+    })
+
+    # logical condition: (3 < id < 5) or (10 < id < 15)
+    QueryInfo.from_json(User, {
+        '$or': {
+            '$and': {
+                'id.gt': 3,
+                'id.lt': 5
+            },
+            '$and.2': {
+                'id.gt': 10,
+                'id.lt': 15
+            }
+        }
+    })
 ```
-
-
-### Query by DSL
-```python
-# $or: (id < 3) or (id > 5)
-(User.id < 3) | (User.id > 5)
-
-# $and: 3 < id < 5
-(User.id > 3) & (User.id < 5)
-
-# $not: not (3 < id < 5)
-~((User.id > 3) & (User.id < 5))
-
-# multiple same operator: (id == 3) or (id == 4) or (id == 5)
-(User.id != 3) | (User.id != 4) | (User.id != 5)
-
-# multiple same operator: (3 < id < 5) or (10 < id < 15)
-((User.id > 3) & (User.id < 5)) | ((User.id > 10) & (User.id < 15))
-```
-
 
 ### Operators
 
@@ -196,18 +231,3 @@ QueryInfo.from_json(User, {
 | relation | CONTAINS | ('contains',) |
 | logic | AND | ('and',) |
 | logic | OR | ('or',) |
-
-
-```json5
-// usage:
-{
-  'time.ge': 1,
-  '$or': {
-    'id.in': [1, 2, 3],
-    '$and': {
-      'time.ge': 100,
-      'time.le': 500,
-    }
-  }
-}
-```

@@ -2,10 +2,10 @@ from typing import Any, Union
 
 from pycrud.const import QUERY_OP_COMPARE
 from pycrud.query import QueryInfo, ConditionLogicExpr, QueryConditions
-from pycrud.types import RecordMapping, RecordMappingField
+from pycrud.types import Entity, EntityField
 
 
-class User(RecordMapping):
+class User(Entity):
     id: int
     nickname: str
     username: str
@@ -13,22 +13,22 @@ class User(RecordMapping):
     test: int = 1
 
 
-def f(val) -> Union[RecordMappingField, Any]:
+def f(val) -> Union[EntityField, Any]:
     return val
 
 
 def test_select_dsl_simple():
-    q = QueryInfo.from_table_raw(User, select=[User.id, User.nickname, User.password])
+    q = QueryInfo.from_table(User, select=[User.id, User.nickname, User.password])
     assert q.select_for_crud == [User.id, User.nickname, User.password]
 
 
 def test_select_simple2():
-    q = QueryInfo.from_table_raw(User)
+    q = QueryInfo.from_table(User)
     assert q.select_for_crud == [User.id, User.nickname, User.username, User.password, User.test]
 
 
 def test_dsl_condition_simple():
-    q = QueryInfo.from_table_raw(User, where=[
+    q = QueryInfo.from_table(User, where=[
         User.nickname == 'test'
     ])
 
@@ -39,7 +39,7 @@ def test_dsl_condition_simple():
 
 
 def test_condition_simple2():
-    q = QueryInfo.from_table_raw(User, where=[
+    q = QueryInfo.from_table(User, where=[
         User.nickname == 'test',
         User.test < 5
     ])
@@ -55,7 +55,7 @@ def test_condition_simple2():
 
 
 def test_condition_logic_2():
-    q = QueryInfo.from_table_raw(User, where=[
+    q = QueryInfo.from_table(User, where=[
         (User.nickname == 'test') & (
             (User.test >= 5) | (User.test <= 10)
         )

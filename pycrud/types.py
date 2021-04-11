@@ -1,6 +1,6 @@
 import asyncio
 import inspect
-from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable
+from typing import Dict, Optional, Any, Set, Union, List, TYPE_CHECKING, Callable, Awaitable, Type
 
 from pydantic import BaseModel, create_model
 from typing_extensions import Literal
@@ -12,16 +12,16 @@ from pycrud.utils.name_helper import camel_case_to_underscore_case, get_class_fu
 
 if TYPE_CHECKING:
     from pycrud.query import QueryInfo
-    from pycrud.values import ValuesToWrite
+    from pycrud.values import ValuesToUpdate, ValuesToCreate
     from pycrud.crud.base_crud import PermInfo
 
 IDList = List[Any]
 
 
-class RecordMappingField:
+class EntityField:
     def __init__(self, s):
         self.name: str = s
-        self.table: Optional['RecordMapping'] = None
+        self.entity: Optional['Entity'] = None
 
     def __hash__(self):
         return hash(self.name)
@@ -30,7 +30,7 @@ class RecordMappingField:
         return str(self.name)
 
     def __repr__(self):
-        return '%s.%s' % (self.table.table_name, str(self.name))
+        return '%s.%s' % (self.entity.table_name, str(self.name))
 
     def _condition_expr(self, op, other):
         from pycrud.query import ConditionExpr
@@ -97,15 +97,15 @@ class RecordMappingField:
         return self._condition_expr(QUERY_OP_RELATION.PREFIX, other)
 
 
-class RecordMappingBase:
+class EntityBase:
     """
     before 和 after 的参数的大方向设计原则是，如果在这一callback中对参数进行修改，可以影响后续行为，则保留
     """
     id: Any
 
-    all_mappings = {}
+    all_mappings: Dict[str, Type['EntityBase']] = {}
 
-    record_fields: Dict[str, RecordMappingField]
+    record_fields: Dict[str, EntityField]
     partial_model: 'BaseModel' = None
 
     @classproperty
@@ -146,7 +146,7 @@ class RecordMappingBase:
     @classmethod
     async def on_insert(
             cls,
-            values_lst: List['ValuesToWrite'],
+            values_lst: List['ValuesToCreate'],
             when_complete: List[Callable[[IDList], Awaitable]],
             perm: 'PermInfo' = None
     ):
@@ -156,7 +156,7 @@ class RecordMappingBase:
     async def on_update(
             cls,
             info: 'QueryInfo',
-            values: 'ValuesToWrite',
+            values: 'ValuesToUpdate',
             when_before_update: List[Callable[[IDList], Awaitable]],
             when_complete: List[Callable[[], Awaitable]],
             perm: 'PermInfo' = None
@@ -183,7 +183,7 @@ class RecordMappingBase:
         pass
 
 
-class RecordMapping(BaseModel, RecordMappingBase):
+class Entity(BaseModel, EntityBase):
     @classmethod
     def to_partial(cls):
         return cls.clone(to_optional='__all__')
@@ -195,7 +195,7 @@ class RecordMapping(BaseModel, RecordMappingBase):
         fields: Set[str] = None,
         exclude: Set[str] = None,
         to_optional: Union[Literal['__all__'], Set[str], Dict[str, Any]] = None
-    ) -> 'RecordMapping':
+    ) -> 'Entity':
         if fields is None:
             fields = set(cls.__fields__.keys())
 
@@ -230,7 +230,7 @@ class RecordMapping(BaseModel, RecordMappingBase):
         all_an = get_all_annotations()
         model = create_model(
             '*partial_' + cls.__name__,
-            __base__=RecordMapping,
+            __base__=Entity,
             **{
                 field: (all_an[field], opt.get(field, ...))
                 for field in fields - exclude
@@ -239,7 +239,7 @@ class RecordMapping(BaseModel, RecordMappingBase):
         return model
 
     def __init_subclass__(cls, **kwargs):
-        super(RecordMapping, cls).__init_subclass__()
+        super(Entity, cls).__init_subclass__()
 
         def check_hook(func):
             assert inspect.ismethod(func) and asyncio.iscoroutinefunction(func),\
@@ -258,8 +258,8 @@ class RecordMapping(BaseModel, RecordMappingBase):
         cls.record_fields = {}
 
         for i in cls.__fields__:
-            f = RecordMappingField(i)
-            f.table = cls
+            f = EntityField(i)
+            f.entity = cls
             setattr(cls, i, f)
             cls.record_fields[i] = f
 

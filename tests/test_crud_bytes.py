@@ -8,12 +8,12 @@ from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.error import InvalidQueryConditionValue
 from pycrud.pydantic_ext.hex_string import HexString
 from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 
 pytestmark = [pytest.mark.asyncio]
 
 
-class ATest(RecordMapping):
+class ATest(Entity):
     id: Optional[int]
     token: HexString
 

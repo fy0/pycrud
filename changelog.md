@@ -1,4 +1,13 @@
 
+### 0.4.0 update 2021.04.11
+
+* Added: fastapi restful demo
+
+* Changed: renamed `RecordMapping` to `Entity`
+
+* Changed: separate `ValuesToWrite` to `ValuesToUpdate` and `ValuesToCreate`
+
+
 ### 0.3.0 update 2020.11.11
 
 * Note: renamed to **pycrud** in pypi (thanks for owner [Emanuel Calso](https://github.com/bloodpet/))

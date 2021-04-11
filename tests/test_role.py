@@ -1,10 +1,10 @@
 from typing import Optional
 
 from pycrud.permission import RoleDefine, TablePerm, A
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 
 
-class User(RecordMapping):
+class User(Entity):
     id: Optional[str]
 
 

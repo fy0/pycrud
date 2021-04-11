@@ -1,9 +1,9 @@
 from pycrud.permission import RoleDefine, TablePerm, A
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 
 
 def test_role_perm_simple():
-    class User(RecordMapping):
+    class User(Entity):
         id: int
 
     rp = RoleDefine({
@@ -16,12 +16,12 @@ def test_role_perm_simple():
 
 
 def test_role_perm_default_and_append():
-    class User(RecordMapping):
+    class User(Entity):
         id: int
         time: int
         gender: str
 
-    class Test(RecordMapping):
+    class Test(Entity):
         id: str
 
     rp = RoleDefine({
@@ -43,7 +43,7 @@ def test_role_perm_default_and_append():
 
 
 def test_role_perm_based_on():
-    class User(RecordMapping):
+    class User(Entity):
         id: int
         time: int
         gender: str

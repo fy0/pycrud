@@ -5,7 +5,7 @@ from typing import Any, Union, Dict, Type
 import pypika
 import typing
 
-from pycrud.types import RecordMapping
+from pycrud.types import Entity
 from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
 from pycrud.error import DBException
 
@@ -15,14 +15,14 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class TortoiseCrud(SQLCrud):
-    mapping2model: Dict[Type[RecordMapping], Union[str, Type['tortoise.models.Model']]]
+    entity2model: Dict[Type[Entity], Union[str, Type['tortoise.models.Model']]]
 
     def __post_init__(self):
         import tortoise
         from tortoise.fields import JSONField
         super().__post_init__()
 
-        for k, v in self.mapping2model.items():
+        for k, v in self.entity2model.items():
             if inspect.isclass(v) and issubclass(v, tortoise.models.Model):
                 for name, f in v._meta.fields_map.items():
                     if f.SQL_TYPE.endswith('[]'):
@@ -30,9 +30,9 @@ class TortoiseCrud(SQLCrud):
                     elif isinstance(f, JSONField):
                         self._table_cache[k]['json_fields'].add(name)
 
-        for k, v in self.mapping2model.items():
+        for k, v in self.entity2model.items():
             if inspect.isclass(v) and issubclass(v, tortoise.models.Model):
-                self.mapping2model[k] = pypika.Table(v._meta.db_table)
+                self.entity2model[k] = pypika.Table(v._meta.db_table)
 
         self._phg_cache = None
         self.is_pg = False
