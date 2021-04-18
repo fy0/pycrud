@@ -250,6 +250,7 @@ async def complex_filter_json():
 | relation | IS | ('is',) |
 | relation | IS_NOT | ('isnot', 'is not') |
 | relation | PREFIX | ('prefix',) |
-| relation | CONTAINS | ('contains',) |
+| relation | CONTAINS_ALL | ('contains_all',) |
+| relation | CONTAINS_ANY | ('contains_any',) |
 | logic | AND | ('and',) |
 | logic | OR | ('or',) |
