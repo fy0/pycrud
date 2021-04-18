@@ -81,24 +81,31 @@ class PlaceHolderGenerator:
 
     def __post_init__(self):
         self.count = 1
+        self.keys = []
         self.values = []
 
     def next(self, value, *, left_is_array=False, left_is_json=False, contains_relation=False) -> Parameter:
         if left_is_array or contains_relation:
-            p = Parameter(self.template.format(count=self.count))
+            key = self.template.format(count=self.count)
+            p = Parameter(key)
             self.count += 1
+            self.keys.append(key)
             self.values.append(value)
 
         elif left_is_json:
-            p = Parameter(self.template.format(count=self.count))
+            key = self.template.format(count=self.count)
+            p = Parameter(key)
             self.count += 1
+            self.keys.append(key)
             self.values.append(self.json_dumps_func(value))
 
         elif isinstance(value, (List, Set, Tuple)):
             tmpls = []
 
             for i in value:
-                tmpls.append(self.template.format(count=self.count))
+                key = self.template.format(count=self.count)
+                self.keys.append(key)
+                tmpls.append(key)
                 self.count += 1
 
             self.values.extend(value)
@@ -109,8 +116,10 @@ class PlaceHolderGenerator:
             p = Parameter(f'({tmpl1})')
 
         else:
-            p = Parameter(self.template.format(count=self.count))
+            key = self.template.format(count=self.count)
+            p = Parameter(key)
             self.count += 1
+            self.keys.append(key)
             self.values.append(value)
 
         return p
