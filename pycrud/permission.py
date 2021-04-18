@@ -40,7 +40,7 @@ ALLOW_DELETE = Sentinel('aabb')
 class RoleDefine:
     permission_desc: PermissionDesc
     based_on: 'RoleDefine' = None
-    match: Union[None, str] = None
+    match_text: Union[None, str] = None
 
     def __hash__(self):
         return id(self)
@@ -101,7 +101,7 @@ class RoleDefine:
 
             self._ability_table[k] = table_columns_by_ability
 
-    def get_perm_avail(self, table: Type['Entity'], ability: A) -> Set[Any]:
+    def get_perm_avail(self, table: Type['Entity'], ability: A) -> Set['EntityField']:
         t = self._ability_table.get(table)
         if t:
             return t.get(ability, set())

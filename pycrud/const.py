@@ -16,15 +16,51 @@ class QUERY_OP_LOGIC(Enum):
 
 
 class QUERY_OP_RELATION(Enum):
-    IN = ('in',)
-    NOT_IN = ('notin', 'not in')
     IS = ('is',)
     IS_NOT = ('isnot', 'is not')
-    PREFIX = ('prefix',)  # string like only
-    IPREFIX = ('iprefix',)  # string like only
-    CONTAINS = ('contains',)  # ArrayField only
-    CONTAINS_ANY = ('contains_any',)  # ArrayField only
 
+    IN = ('in',)
+    NOT_IN = ('notin', 'not in')
+
+    # string like only
+    PREFIX = ('prefix',)
+    IPREFIX = ('iprefix',)
+
+    # ArrayField only
+    CONTAINS_ALL = ('contains_all', 'contains',)
+    CONTAINS_ANY = ('contains_any',)
+
+
+class OP_UPDATE(Enum):
+    INCR = ('incr',)
+    DECR = ('decr',)
+
+    # ArrayField only
+    ARRAY_EXTEND = ('array_extend',)
+    ARRAY_PRUNE = ('array_prune',)
+
+    ARRAY_EXTEND_DISTINCT = ('array_extend_distinct',)
+    ARRAY_PRUNE_DISTINCT = ('array_prune_distinct',)
+
+
+# value: column_type
+OP_QUERY_TYPE_1 = {
+    QUERY_OP_COMPARE.EQ, QUERY_OP_COMPARE.NE, QUERY_OP_COMPARE.LT, QUERY_OP_COMPARE.LE, QUERY_OP_COMPARE.GT, QUERY_OP_COMPARE.GE,
+    QUERY_OP_RELATION.IS, QUERY_OP_RELATION.IS_NOT
+}
+
+# value: List[column_type]
+OP_QUERY_TYPE_2 = {
+    QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN
+}
+
+OP_QUERY_TYPE_ARRAY = {
+    QUERY_OP_RELATION.CONTAINS_ALL, QUERY_OP_RELATION.CONTAINS_ANY
+}
+
+OP_QUERY_TYPE_STRING_LIKE = {
+    QUERY_OP_RELATION.PREFIX, QUERY_OP_RELATION.IPREFIX
+}
 
 QUERY_OP_FROM_TXT = {}
 

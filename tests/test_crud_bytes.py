@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 import peewee
@@ -6,8 +5,8 @@ import pytest
 
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.error import InvalidQueryConditionValue
-from pycrud.pydantic_ext.hex_string import HexString
-from pycrud.query import QueryInfo, QueryConditions, ConditionExpr
+from pycrud.helpers.pydantic_ext.hex_string import HexString
+from pycrud.query import QueryInfo, QueryConditions
 from pycrud.types import Entity
 
 pytestmark = [pytest.mark.asyncio]

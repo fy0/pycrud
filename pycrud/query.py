@@ -460,7 +460,7 @@ class QueryInfo:
                         raise UnknownQueryOperator(op_name)
 
                     is_in = op in (QUERY_OP_RELATION.IN, QUERY_OP_RELATION.NOT_IN)
-                    is_contains = op in (QUERY_OP_RELATION.CONTAINS, QUERY_OP_RELATION.CONTAINS_ANY)
+                    is_contains = op in (QUERY_OP_RELATION.CONTAINS_ALL, QUERY_OP_RELATION.CONTAINS_ANY)
 
                     try:
                         field_ = getattr(table, field_name)

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from playhouse.db_url import connect
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
+from pycrud.helpers.fastapi_ext import QueryDto
 from pycrud.query import QueryInfo
 from pycrud.types import Entity
 from pycrud.values import ValuesToUpdate
@@ -13,7 +14,7 @@ from pycrud.values import ValuesToUpdate
 
 # ORM Initialize
 
-db = connect("sqlite:///:memory:")
+db = connect('sqlite:///:memory:')
 
 
 class UserModel(peewee.Model):
@@ -56,25 +57,25 @@ app.add_middleware(
 
 
 @app.post("/user/create")
-async def user_create(item: User):
+async def user_create(item: User.dto.get_create()):
     return await c.insert_many(User, [item])  # response id list: [1]
 
 
 @app.get("/user/list")
-async def user_list(request: Request):
-    q = QueryInfo.from_json(User, request.query_params, True)
+async def user_list(query_json=QueryDto(User)):
+    q = QueryInfo.from_json(User, query_json)
     return [x.to_dict() for x in await c.get_list(q)]
 
 
 @app.post("/user/update")
-async def user_list(request: Request, item: User.partial_model):
-    q = QueryInfo.from_json(User, request.query_params, True)
+async def user_list(item: User.dto.get_update(), query_json=QueryDto(User)):
+    q = QueryInfo.from_json(User, query_json)
     return await c.update(q, ValuesToUpdate(item))
 
 
 @app.post("/user/delete")
-async def user_delete(request: Request):
-    q = QueryInfo.from_json(User, request.query_params, True)
+async def user_delete(query_json=QueryDto(User)):
+    q = QueryInfo.from_json(User, query_json)
     return await c.delete(q)  # response id list: [1]
 
 

@@ -1,10 +1,10 @@
 import binascii
 import json
-from typing import Any, Union, List
+from typing import List
 
-from pycrud.pydantic_ext.hex_string import HexString
+from pycrud.helpers.pydantic_ext.hex_string import HexString
 from pycrud.query import QueryInfo
-from pycrud.types import Entity, EntityField
+from pycrud.types import Entity
 
 
 class User(Entity):

@@ -22,7 +22,7 @@ async def test_crud_perm_read():
                 User.id: {A.READ},
                 User.password: {A.READ}
             })
-        }, match=None),
+        }),
     }
 
     c = PeeweeCrud(permission, {User: MUsers}, db)
@@ -42,7 +42,7 @@ async def test_crud_perm_query_disallow_and_allow_simple():
                 User.id: {A.READ},
                 User.password: {A.READ}
             })
-        }, match=None),
+        }),
         'user': RoleDefine({
             User: TablePerm({
                 User.id: {A.READ, A.QUERY},
@@ -81,14 +81,14 @@ async def test_crud_perm_write():
                 User.nickname: {A.READ},
                 User.password: {A.READ}
             })
-        }, match=None),
+        }),
         'user': RoleDefine({
             User: TablePerm({
                 User.id: {A.READ, A.QUERY},
                 User.nickname: {A.READ, A.UPDATE},
                 User.password: {A.READ}
             })
-        }, match=None)
+        })
     }
 
     c = PeeweeCrud(permission, {User: MUsers}, db)
@@ -140,7 +140,7 @@ async def test_crud_perm_delete():
             User.nickname: {A.READ},
             User.password: {A.READ}
         })
-    }, match=None)
+    })
 
     role_user = RoleDefine({
         User: TablePerm({
@@ -148,7 +148,7 @@ async def test_crud_perm_delete():
             User.nickname: {A.READ, A.UPDATE},
             User.password: {A.READ}
         }, allow_delete=True)
-    }, match=None)
+    })
 
     c = PeeweeCrud(None, {User: MUsers}, db)
 
@@ -178,7 +178,7 @@ async def test_crud_perm_insert():
             User.nickname: {A.READ},
             User.password: {A.READ}
         })
-    }, match=None)
+    })
 
     role_user = RoleDefine({
         User: TablePerm({
@@ -187,7 +187,7 @@ async def test_crud_perm_insert():
             User.nickname: {A.READ, A.UPDATE, A.CREATE},
             User.password: {A.READ, A.CREATE}
         }, allow_delete=True)
-    }, match=None)
+    })
 
     c = PeeweeCrud(None, {User: MUsers}, db)
 

@@ -7,13 +7,15 @@ from typing_extensions import Literal
 
 from pycrud.const import QUERY_OP_RELATION
 from pycrud.crud.query_result_row import QueryResultRowList
+from pycrud.dto_generator import DTOGenerator
+from pycrud.utils import sentinel
 from pycrud.utils.cls_property import classproperty
 from pycrud.utils.name_helper import camel_case_to_underscore_case, get_class_full_name
 
 if TYPE_CHECKING:
     from pycrud.query import QueryInfo
     from pycrud.values import ValuesToUpdate, ValuesToCreate
-    from pycrud.crud.base_crud import PermInfo
+    from pycrud.crud.base_crud import PermInfo, BaseCrud
 
 IDList = List[Any]
 
@@ -70,7 +72,7 @@ class EntityField:
 
     def contains(self, others: List[Any]):
         from pycrud.const import QUERY_OP_RELATION
-        return self._condition_expr(QUERY_OP_RELATION.CONTAINS, others)
+        return self._condition_expr(QUERY_OP_RELATION.CONTAINS_ALL, others)
 
     def contains_any(self, other: Any):
         from pycrud.const import QUERY_OP_RELATION
@@ -107,6 +109,9 @@ class EntityBase:
 
     record_fields: Dict[str, EntityField]
     partial_model: 'BaseModel' = None
+
+    crud: 'BaseCrud'
+    dto: DTOGenerator
 
     @classproperty
     def table_name(cls):
@@ -186,21 +191,26 @@ class EntityBase:
 class Entity(BaseModel, EntityBase):
     @classmethod
     def to_partial(cls):
-        return cls.clone(to_optional='__all__')
+        return cls.clone(to_optional='__all__', prefix='*partial_')
 
     @classmethod
     def clone(
         cls,
         *,
-        fields: Set[str] = None,
-        exclude: Set[str] = None,
-        to_optional: Union[Literal['__all__'], Set[str], Dict[str, Any]] = None
+        fields: Set[str] = sentinel,
+        exclude: Set[str] = sentinel,
+        to_optional: Union[Literal['__all__'], Set[str], Dict[str, Any]] = None,
+        prefix='*clone_',
+        base_cls=sentinel
     ) -> 'Entity':
-        if fields is None:
+        if fields is sentinel:
             fields = set(cls.__fields__.keys())
 
-        if exclude is None:
+        if exclude is sentinel:
             exclude = set()
+
+        if base_cls is sentinel:
+            base_cls = Entity
 
         fields_defaults = {}
         _missing = object()
@@ -229,9 +239,10 @@ class Entity(BaseModel, EntityBase):
 
         all_an = get_all_annotations()
         model = create_model(
-            '*partial_' + cls.__name__,
-            __base__=Entity,
+            prefix + cls.__name__,
+            __base__=base_cls,
             **{
+                # tip: {k: v for k,v in ...}
                 field: (all_an[field], opt.get(field, ...))
                 for field in fields - exclude
             }
@@ -265,3 +276,4 @@ class Entity(BaseModel, EntityBase):
 
         assert cls.record_fields.get('id'), 'id must be defined for %s' % cls
         cls.partial_model = cls.to_partial()
+        cls.dto = DTOGenerator(cls)

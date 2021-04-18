@@ -35,7 +35,7 @@ _sql_method_map = {
     QUERY_OP_RELATION.NOT_IN: 'notin',
     QUERY_OP_RELATION.IS: '__eq__',
     QUERY_OP_RELATION.IS_NOT: '__ne__',
-    QUERY_OP_RELATION.CONTAINS: 'contains',
+    QUERY_OP_RELATION.CONTAINS_ALL: 'contains',
     QUERY_OP_RELATION.CONTAINS_ANY: '',
     QUERY_OP_RELATION.PREFIX: '',
 }
@@ -142,6 +142,8 @@ class SQLCrud(BaseCrud):
         }
 
         for k, v in self.entity2model.items():
+            k.crud = self
+
             if isinstance(v, str):
                 self.entity2model[k] = pypika.Table(v)
 
@@ -370,7 +372,7 @@ class SQLCrud(BaseCrud):
                     if isinstance(c.value, EntityField):
                         real_value = getattr(self.entity2model[c.value.entity], c.value.name)
                     else:
-                        contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS,
+                        contains_relation = c.op in (QUERY_OP_RELATION.CONTAINS_ALL,
                                                      QUERY_OP_RELATION.CONTAINS_ANY)
 
                         # value = [c.value] if c.op == QUERY_OP_RELATION.CONTAINS_ANY else c.value

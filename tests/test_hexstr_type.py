@@ -1,5 +1,5 @@
-from pycrud.pydantic_ext.hex_string import HexString
-from pycrud.query import QueryInfo, ConditionLogicExpr
+from pycrud.helpers.pydantic_ext.hex_string import HexString
+from pycrud.query import QueryInfo
 from pycrud.types import Entity
 
 
