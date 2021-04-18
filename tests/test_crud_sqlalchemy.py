@@ -60,7 +60,6 @@ def crud_db_init():
         user_id = Column(Integer)
 
     Base.metadata.create_all(engine)
-    # db.create_tables([Users, Topics, Topics2], safe=True)
 
     session = Session()
     session.add(Users(username='test', nickname=2, password='pass'))
