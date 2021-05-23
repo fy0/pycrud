@@ -1,11 +1,11 @@
 import inspect
 from dataclasses import dataclass
-from typing import Any, Union, Dict, Type
+from typing import Any, Union, Dict, Type, Optional, List
 
 import pypika
 import typing
 
-
+from pycrud.permission import RoleDefine
 from pycrud.types import Entity
 from pycrud.crud.sql_crud import SQLCrud, PlaceHolderGenerator, SQLExecuteResult
 from pycrud.error import DBException, UnknownDatabaseException
@@ -17,10 +17,15 @@ if typing.TYPE_CHECKING:
         pass
 
 
-@dataclass
 class SQLAlchemyCrud(SQLCrud):
     entity2model: Dict[Type[Entity], Union[str, Any]]
     db: 'Engine'
+
+    def __init__(self, permission: Optional[List[RoleDefine]], entity2model: Dict[Type[Entity], Union[str, Any]], db: Any):
+        super(SQLAlchemyCrud, self).__init__(permission, entity2model)
+        self.entity2model = entity2model
+        self.db = db
+        self.__post_init__()
 
     def __post_init__(self):
         import sqlalchemy

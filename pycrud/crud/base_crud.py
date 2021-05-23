@@ -1,6 +1,5 @@
 from abc import ABC
-from dataclasses import dataclass
-from typing import Any, Dict, Union, List, Type, Iterable, Optional
+from typing import Any, Dict, Union, List, Type, Iterable
 
 import pydantic
 
@@ -8,25 +7,52 @@ from pycrud.const import QUERY_OP_RELATION
 from pycrud.crud._core_crud import CoreCrud
 from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycrud.error import PermissionException, InvalidQueryValue
-from pycrud.permission import RoleDefine, A
+from pycrud.permission import RoleDefine, A, PermInfo, TablePerm
 from pycrud.query import QueryInfo, QueryConditions, ConditionExpr, QueryJoinInfo, ConditionLogicExpr, UnaryExpr
 from pycrud.types import Entity, IDList, EntityField
-from pycrud.values import ValuesToUpdate
+from pycrud.values import ValuesToUpdate, ValuesToCreate
 
 
-@dataclass
-class PermInfo:
-    is_check: bool
-    user: Any
-    role: Optional['RoleDefine']
-
-    def __bool__(self):
-        return self.is_check
-
-
-@dataclass
 class BaseCrud(CoreCrud, ABC):
-    permission: Any
+    permission: Dict[str, RoleDefine] = {}
+    _permission_list: List[RoleDefine]
+
+    default_role: RoleDefine = None
+
+    def __init__(self, permission: List[RoleDefine]):
+        self._permission_list = permission
+
+    def permission_apply(self):
+        self.permission.clear()
+
+        permission_list = []
+        if not self._permission_list:
+            data = {}
+            entity2model = getattr(self, 'entity2model', None)
+            if entity2model:
+                entities: List[Type[Entity]] = entity2model.keys()
+                for i in entities:
+                    data[i] = TablePerm({}, default_perm={A.QUERY, A.CREATE, A.READ, A.UPDATE}, allow_delete=True)
+
+            permission_list.append(RoleDefine('visitor', data))
+        else:
+            permission_list = self._permission_list
+            assert len(permission_list), 'must define one role at least'
+
+        self.default_role = permission_list[0]
+
+        for i in permission_list:
+            self.permission[i.name] = i
+        for i in permission_list:
+            if isinstance(i.based_on, str):
+                role = self.permission.get(i.based_on, None)
+                assert role is not None, f"Can't find the role `{i.based_on}` which is `{i.name}` based on"
+                i.based_on = role
+        for i in permission_list:
+            i.bind()
+
+    def __post_init__(self):
+        self.permission_apply()
 
     async def solve_returning(self, table: Type[Entity], id_lst: IDList, info: QueryInfo = None,
                               perm: PermInfo = None):
@@ -46,9 +72,17 @@ class BaseCrud(CoreCrud, ABC):
 
     @staticmethod
     async def _solve_query(info: QueryInfo, perm: PermInfo):
-        if perm.is_check:
+        if perm:
             allow_query = perm.role.get_perm_avail(info.table, A.QUERY)
             allow_read = perm.role.get_perm_avail(info.table, A.READ)
+
+            if info.join:
+                allow_query = set(allow_query)
+                allow_read = set(allow_read)
+
+                for i in info.join:
+                    allow_query.update(perm.role.get_perm_avail(i.table, A.QUERY))
+                    allow_read.update(perm.role.get_perm_avail(i.table, A.READ))
 
             def sub_solve_items(items):
                 if items:
@@ -89,18 +123,19 @@ class BaseCrud(CoreCrud, ABC):
 
         return info
 
-    async def insert_many_with_perm(self, entity: Type[Entity], values_list: Iterable[ValuesToUpdate],
+    async def insert_many_with_perm(self, entity: Type[Entity], values_list: Iterable[ValuesToCreate],
                                     returning=False, *, perm: PermInfo = None) -> Union[IDList, List[QueryResultRow]]:
         values_list_new = []
 
         if perm is None:
-            perm = PermInfo(False, None, None)
+            perm = PermInfo()
+        perm._init(self)
 
-        if perm.is_check:
+        if perm:
             avail = perm.role.get_perm_avail(entity, A.CREATE)
 
         for i in values_list:
-            if perm.is_check:
+            if perm:
                 for j in (i.keys() - avail):
                     del i[j]
 
@@ -122,9 +157,10 @@ class BaseCrud(CoreCrud, ABC):
     async def update_with_perm(self, info: QueryInfo, values: ValuesToUpdate, returning=False,
                                *, perm: PermInfo = None) -> Union[List[Any], List[QueryResultRow]]:
         if perm is None:
-            perm = PermInfo(False, None, None)
+            perm = PermInfo()
+        perm._init(self)
 
-        if perm.is_check:
+        if perm:
             avail = perm.role.get_perm_avail(info.table, A.UPDATE)
             rest = []
 
@@ -157,12 +193,13 @@ class BaseCrud(CoreCrud, ABC):
 
         return lst
 
-    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfo=None) -> int:
+    async def delete_with_perm(self, info: QueryInfo, *, perm: PermInfo = None) -> IDList:
         if perm is None:
-            perm = PermInfo(False, None, None)
-        if perm.is_check:
-            if not perm.role.can_delete(info.table):
-                raise PermissionException('delete', info.table)
+            perm = PermInfo()
+        perm._init(self)
+
+        if perm and not perm.role.can_delete(info.table):
+            raise PermissionException('delete', info.table)
 
         info = await self._solve_query(info, perm)
         return await self.delete(info, _perm=perm)
@@ -170,14 +207,16 @@ class BaseCrud(CoreCrud, ABC):
     async def get_list_with_perm(self, info: QueryInfo, with_count=False, *,
                                  perm: PermInfo = None) -> QueryResultRowList:
         if perm is None:
-            perm = PermInfo(False, None, None)
+            perm = PermInfo()
+        perm._init(self)
         info = await self._solve_query(info, perm)
         return await self.get_list(info, with_count, _perm=perm)
 
     async def get_list_with_foreign_keys(self, info: QueryInfo, with_count=False,
                                          perm: PermInfo = None) -> QueryResultRowList:
         if perm is None:
-            perm = PermInfo(False, None, None)
+            perm = PermInfo()
+        perm._init(self)
 
         ret = await self.get_list_with_perm(info, with_count, perm=perm)
 

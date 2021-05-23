@@ -1,13 +1,14 @@
 import dataclasses
 import json
 from dataclasses import dataclass, field
-from typing import List, Union, Set, Dict, Any, Type, Mapping
+from typing import List, Union, Set, Dict, Any, Type, Mapping, TYPE_CHECKING
 
 from typing_extensions import Literal
 
 from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION, QUERY_OP_FROM_TXT
 from pycrud.error import UnknownQueryOperator, InvalidQueryConditionValue, InvalidQueryConditionColumn, \
     InvalidOrderSyntax, InvalidQueryConditionOperator
+
 from pycrud.types import Entity, EntityField
 
 
@@ -44,7 +45,7 @@ class SelectExpr:
     """
     $ta.id
     """
-    column: Union[EntityField, Any]
+    column: Union['EntityField', Any]
     alias: str = None
 
     @property
@@ -76,7 +77,7 @@ class QueryField:
 
 @dataclass
 class QueryOrder:
-    column: EntityField
+    column: 'EntityField'
     order: Union[Literal['asc', 'desc', 'default']] = 'default'
 
     def __eq__(self, other):
@@ -88,7 +89,7 @@ class QueryOrder:
         return '<QueryOrder %r.%s>' % (self.column, self.order)
 
     @classmethod
-    def from_text(cls, table: Type[Entity], text):
+    def from_text(cls, table: Type['Entity'], text):
         """
         :param text: order=id.desc, xxx.asc
         :return: [
@@ -135,9 +136,9 @@ class ConditionExpr:
     $ta:id.eq = 123
     $ta:id.eq = $tb:id
     """
-    column: Union[EntityField, Any]  # 实际类型是 RecordMappingField，且必须如此
+    column: Union['EntityField', Any]  # 实际类型是 RecordMappingField，且必须如此
     op: Union[QUERY_OP_COMPARE, QUERY_OP_RELATION]
-    value: Union[EntityField, Any]
+    value: Union['EntityField', Any]
 
     def __post_init__(self):
         assert isinstance(self.column, EntityField), 'RecordMappingField excepted, got %s' % type(self.column)
@@ -233,80 +234,83 @@ def check_same_expr(a: AllExprType, b: AllExprType) -> bool:
 
 @dataclass
 class QueryJoinInfo:
-    table: Type[Entity]
+    table: Type['Entity']
     conditions: QueryConditions
     type: Union[Literal['inner', 'left']] = 'left'
     limit: int = -1  # unlimited
 
 
+"""
+QueryInfo 设计思路：
+{
+    'username.eq': '111',
+}
+{
+    '$or': {
+        'username.eq': '111',
+        'name.ne': '22'
+    }
+}
+
+// 方案一
+// 方案问题：
+// 1. 如果只允许外部表join当前表，那么表达能力不如方案二；如果主表也能写涉及外部表的条件，自由度过大，容易写出奇怪的语句
+{
+    '$select': 'aa, bb, cc', // 选中
+    '$select-': 'dd, ee, ff', // 排除
+    '$order-by': 'aa.desc, bb.asc',
+    '$foreign-key': {
+        'user_info': {  // 外联表名
+            '$select': ...
+            'id.eq': '$src.id'
+        },
+        'user_info[]': {  // 外联表名
+            '$select': ...
+            'id.eq': '$src.id'
+        },
+        'session': {
+            'id.eq': '$user_info.id'  // 不能允许这个
+        }
+    },
+
+    'time.gt': '$session.time', // 暂不允许inner join
+}
+// 关键字：$select、$select-，$order-by，$foreign-key
+
+// 方案二
+// 方案问题：
+// 1. value 有时是str 有时是表达式
+// 2. 如果不做限制，实际上任意一个接口都差不多具备全库查询能力
+// 3. join时候要区分inner outter还是有些复杂
+{
+    '$from': 'ta', // 此为隐含条件，不需要直接写出
+    '$from_others': ['tb'],  // join的表
+
+    '$select': ['aa', 'bb', '$tb:cc', '$ta'], // $ta 代指ta表，返回json：{'aa': xx, 'bb': xx, '$tb:cc': xx, '$ta': xxx}
+    '$select': {'aa': null, 'bb': null, '$tb:cc': 'cc', '$ta': 'a_info'],  // 返回结果同上 用value的名字覆盖上面的
+
+    '$id.eq': '$tb:id', // select ... from ta, tb where ta.id = tb.id
+    '$time.gt': 1,  // select ... from ta, tb where ta.time > 1
+    '$tb:cc.eq': '$ta:id', // select ... from ta, tb where tb.cc = ta.id
+    '$or': {
+        '$user_id.eq': '11',
+        '$user_id.eq': '22',
+    }
+}
+// 关键字：$select、$select-，$order-by，$foreign-key，$or，$and
+"""
+
+
 @dataclass
 class QueryInfo:
-    """
-    {
-        'username.eq': '111',
-    }
-    {
-        '$or': {
-            'username.eq': '111',
-            'name.ne': '22'
-        }
-    }
-
-    // 方案一
-    // 方案问题：
-    // 1. 如果只允许外部表join当前表，那么表达能力不如方案二；如果主表也能写涉及外部表的条件，自由度过大，容易写出奇怪的语句
-    {
-        '$select': 'aa, bb, cc', // 选中
-        '$select-': 'dd, ee, ff', // 排除
-        '$order-by': 'aa.desc, bb.asc',
-        '$foreign-key': {
-            'user_info': {  // 外联表名
-                '$select': ...
-                'id.eq': '$src.id'
-            },
-            'user_info[]': {  // 外联表名
-                '$select': ...
-                'id.eq': '$src.id'
-            },
-            'session': {
-                'id.eq': '$user_info.id'  // 不能允许这个
-            }
-        },
-
-        'time.gt': '$session.time', // 暂不允许inner join
-    }
-    // 关键字：$select、$select-，$order-by，$foreign-key
-
-    // 方案二
-    // 方案问题：
-    // 1. value 有时是str 有时是表达式
-    // 2. 如果不做限制，实际上任意一个接口都差不多具备全库查询能力
-    // 3. join时候要区分inner outter还是有些复杂
-    {
-        '$from': 'ta', // 此为隐含条件，不需要直接写出
-        '$from_others': ['tb'],  // join的表
-
-        '$select': ['aa', 'bb', '$tb:cc', '$ta'], // $ta 代指ta表，返回json：{'aa': xx, 'bb': xx, '$tb:cc': xx, '$ta': xxx}
-        '$select': {'aa': null, 'bb': null, '$tb:cc': 'cc', '$ta': 'a_info'],  // 返回结果同上 用value的名字覆盖上面的
-
-        '$id.eq': '$tb:id', // select ... from ta, tb where ta.id = tb.id
-        '$time.gt': 1,  // select ... from ta, tb where ta.time > 1
-        '$tb:cc.eq': '$ta:id', // select ... from ta, tb where tb.cc = ta.id
-        '$or': {
-            '$user_id.eq': '11',
-            '$user_id.eq': '22',
-        }
-    }
-    // 关键字：$select、$select-，$order-by，$foreign-key，$or，$and
-    """
-    entity: Type[Entity]
+    entity: Type['Entity']
 
     @property
     def table(self):
         return self.entity
 
-    select: List[Union[EntityField, Any]] = field(default_factory=lambda: [])
-    select_exclude: Set[Union[EntityField, Any]] = None
+    select: List[Union['EntityField', Any]] = field(default_factory=lambda: [])
+    select_exclude: Set[Union['EntityField', Any]] = None
 
     conditions: QueryConditions = None
     order_by: List[QueryOrder] = field(default_factory=lambda: [])
@@ -317,7 +321,7 @@ class QueryInfo:
     limit: int = 20
 
     join: List[QueryJoinInfo] = None
-    select_hidden: Set[Union[EntityField, Any]] = field(default_factory=lambda: set())
+    select_hidden: Set[Union['EntityField', Any]] = field(default_factory=lambda: set())
 
     def __post_init__(self):
         self._select = None
@@ -357,7 +361,7 @@ class QueryInfo:
         )
 
     @classmethod
-    def from_json(cls, table: Type[Entity], data, from_http_query=False, check_cond_with_field=False):
+    def from_json(cls, table: Type['Entity'], data, from_http_query=False, check_cond_with_field=False):
         assert table, 'table must be exists'
         get_items = lambda keys: [getattr(table, x) for x in keys]
         q = cls(table)

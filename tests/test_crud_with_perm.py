@@ -1,11 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from pycrud.crud.base_crud import PermInfo
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.crud.query_result_row import QueryResultRow
 from pycrud.error import PermissionException, InvalidQueryValue
-from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.permission import RoleDefine, TablePerm, A, PermInfo
 from pycrud.query import QueryInfo
 from pycrud.values import ValuesToUpdate, ValuesToCreate
 from tests.test_crud import crud_db_init, User
@@ -16,19 +15,17 @@ pytestmark = [pytest.mark.asyncio]
 async def test_crud_perm_read():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
-    permission = {
-        'visitor': RoleDefine({
-            User: TablePerm({
-                User.id: {A.READ},
-                User.password: {A.READ}
-            })
-        }),
-    }
+    visitor = RoleDefine('visitor', {
+        User: TablePerm({
+            User.id: {A.READ},
+            User.password: {A.READ}
+        })
+    })
 
-    c = PeeweeCrud(permission, {User: MUsers}, db)
+    c = PeeweeCrud([visitor], {User: MUsers}, db)
     info = QueryInfo.from_json(User, {})
 
-    ret = await c.get_list_with_perm(info, perm=PermInfo(True, None, permission['visitor']))
+    ret = await c.get_list_with_perm(info, perm=PermInfo(None, visitor))
     for i in ret:
         assert i.to_dict().keys() == {'id', 'password'}
 
@@ -36,34 +33,33 @@ async def test_crud_perm_read():
 async def test_crud_perm_query_disallow_and_allow_simple():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
-    permission = {
-        'visitor': RoleDefine({
-            User: TablePerm({
-                User.id: {A.READ},
-                User.password: {A.READ}
-            })
-        }),
-        'user': RoleDefine({
-            User: TablePerm({
-                User.id: {A.READ, A.QUERY},
-                User.password: {A.READ}
-            })
-        }),
-    }
+    visitor = RoleDefine('visitor', {
+        User: TablePerm({
+            User.id: {A.READ},
+            User.password: {A.READ}
+        })
+    })
 
-    c = PeeweeCrud(permission, {User: MUsers}, db)
+    user = RoleDefine('user', {
+        User: TablePerm({
+            User.id: {A.READ, A.QUERY},
+            User.password: {A.READ}
+        })
+    })
+
+    c = PeeweeCrud([visitor, user], {User: MUsers}, db)
     info = QueryInfo.from_json(User, {
         'id.eq': 5,
     })
 
-    ret = await c.get_list_with_perm(info, perm=PermInfo(True, None, permission['visitor']))
+    ret = await c.get_list_with_perm(info, perm=PermInfo(None, visitor))
     assert len(ret) == 5
 
     # 注意这里，权限过滤会改变info内部的样子
     info = QueryInfo.from_json(User, {
         'id.eq': 5,
     })
-    ret = await c.get_list_with_perm(info, perm=PermInfo(True, None, permission['user']))
+    ret = await c.get_list_with_perm(info, perm=PermInfo(None, user))
     assert len(ret) == 1
 
 
@@ -74,39 +70,38 @@ async def test_crud_perm_query_inside():
 async def test_crud_perm_write():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
-    permission = {
-        'visitor': RoleDefine({
-            User: TablePerm({
-                User.id: {A.READ, A.QUERY},
-                User.nickname: {A.READ},
-                User.password: {A.READ}
-            })
-        }),
-        'user': RoleDefine({
-            User: TablePerm({
-                User.id: {A.READ, A.QUERY},
-                User.nickname: {A.READ, A.UPDATE},
-                User.password: {A.READ}
-            })
+    visitor = RoleDefine('visitor', {
+        User: TablePerm({
+            User.id: {A.READ, A.QUERY},
+            User.nickname: {A.READ},
+            User.password: {A.READ}
         })
-    }
+    })
 
-    c = PeeweeCrud(permission, {User: MUsers}, db)
+    user = RoleDefine('user', {
+        User: TablePerm({
+            User.id: {A.READ, A.QUERY},
+            User.nickname: {A.READ, A.UPDATE},
+            User.password: {A.READ}
+        })
+    })
+
+    c = PeeweeCrud([visitor, user], {User: MUsers}, db)
 
     # perm visitor
     with pytest.raises(InvalidQueryValue):
         ret = await c.update_with_perm(
             QueryInfo.from_json(User, {'id.eq': 5}),
             ValuesToUpdate({'nickname': 'aaa'}, User).bind(),
-            perm=PermInfo(True, None, permission['visitor'])
+            perm=PermInfo(True, None, visitor)
         )
         assert len(ret) == 0  # all filtered
 
-    # not check
+    # skip permission check
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
         ValuesToUpdate({'nickname': 'aaa'}, User).bind(),
-        perm=PermInfo(False, None, permission['visitor'])
+        perm=PermInfo(None, visitor, skip_check=True)
     )
     assert len(ret) == 1
     assert ret[0] == 5
@@ -115,7 +110,7 @@ async def test_crud_perm_write():
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
         ValuesToUpdate({'nickname': 'ccc'}, User).bind(),
-        perm=PermInfo(True, None, permission['user'])
+        perm=PermInfo(None, user)
     )
     assert len(ret) == 1
     assert ret[0] == 5
@@ -124,7 +119,7 @@ async def test_crud_perm_write():
     ret = await c.update_with_perm(
         QueryInfo.from_json(User, {'id.eq': 5}),
         ValuesToUpdate({'nickname': 'ccc'}, User).bind(),
-        perm=PermInfo(True, None, permission['user']),
+        perm=PermInfo(None, user),
         returning=True
     )
     assert len(ret) == 1
@@ -134,7 +129,7 @@ async def test_crud_perm_write():
 async def test_crud_perm_delete():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
-    role_visitor = RoleDefine({
+    role_visitor = RoleDefine('visitor', {
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
             User.nickname: {A.READ},
@@ -142,7 +137,7 @@ async def test_crud_perm_delete():
         })
     })
 
-    role_user = RoleDefine({
+    role_user = RoleDefine('user', {
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
             User.nickname: {A.READ, A.UPDATE},
@@ -150,20 +145,20 @@ async def test_crud_perm_delete():
         }, allow_delete=True)
     })
 
-    c = PeeweeCrud(None, {User: MUsers}, db)
+    c = PeeweeCrud([role_user, role_visitor], {User: MUsers}, db)
 
     # perm visitor
     with pytest.raises(PermissionException):
         await c.delete_with_perm(
             QueryInfo.from_json(User, {}),
-            perm=PermInfo(True, None, role_visitor)
+            perm=PermInfo(None, role_visitor)
         )
 
     # perm user
     assert len(await c.get_list(QueryInfo(User))) == 5
     ret = await c.delete_with_perm(
         QueryInfo.from_json(User, {}),
-        perm=PermInfo(True, None, role_user)
+        perm=PermInfo(None, role_user)
     )
     assert len(ret) == 5
     assert len(await c.get_list(QueryInfo(User))) == 0
@@ -172,7 +167,7 @@ async def test_crud_perm_delete():
 async def test_crud_perm_insert():
     db, MUsers, MTopics, MTopics2 = crud_db_init()
 
-    role_visitor = RoleDefine({
+    role_visitor = RoleDefine('visitor', {
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
             User.nickname: {A.READ},
@@ -180,7 +175,7 @@ async def test_crud_perm_insert():
         })
     })
 
-    role_user = RoleDefine({
+    role_user = RoleDefine('user', {
         User: TablePerm({
             User.id: {A.READ, A.QUERY},
             User.username: {A.CREATE},
@@ -189,22 +184,22 @@ async def test_crud_perm_insert():
         }, allow_delete=True)
     })
 
-    c = PeeweeCrud(None, {User: MUsers}, db)
+    c = PeeweeCrud([role_user, role_visitor], {User: MUsers}, db)
 
     # perm visitor
     with pytest.raises(ValidationError):
         ret = await c.insert_many_with_perm(
             User,
             [ValuesToCreate({'id': 10, 'nickname': 'aaa', 'username': 'bbb'}, User)],
-            perm=PermInfo(True, None, role_visitor)
+            perm=PermInfo(None, role_visitor)
         )
         assert len(ret) == 0  # all filtered
 
     # perm user
     ret = await c.insert_many_with_perm(
         User,
-        [ValuesToUpdate({'id': 10, 'nickname': 'aaa', 'username': 'u1'})],
-        perm=PermInfo(True, None, role_user)
+        [ValuesToCreate({'id': 10, 'nickname': 'aaa', 'username': 'u1'})],
+        perm=PermInfo(None, role_user)
     )
     assert len(ret) == 1
 
@@ -215,7 +210,7 @@ async def test_crud_perm_insert():
     ret = await c.insert_many_with_perm(
         User,
         [ValuesToCreate({'nickname': 'qqqq', 'username': 'u1'}, User).bind()],
-        perm=PermInfo(False, None, role_visitor)
+        perm=PermInfo(None, role_visitor, skip_check=True)
     )
     assert len(ret) == 1
 
@@ -223,7 +218,7 @@ async def test_crud_perm_insert():
     ret = await c.insert_many_with_perm(
         User,
         [ValuesToCreate({'nickname': 'wwww', 'username': 'u2'}, User).bind()],
-        perm=PermInfo(False, None, role_visitor),
+        perm=PermInfo(None, role_visitor, skip_check=True),
         returning=True
     )
 

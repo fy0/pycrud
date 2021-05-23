@@ -6,11 +6,12 @@ def test_role_perm_simple():
     class User(Entity):
         id: int
 
-    rp = RoleDefine({
+    rp = RoleDefine('test', {
         User: TablePerm({
             User.id: {A.UPDATE},
         })
     })
+    rp.bind()
 
     assert rp._ability_table[User][A.UPDATE] == {User.id}
 
@@ -24,7 +25,7 @@ def test_role_perm_default_and_append():
     class Test(Entity):
         id: str
 
-    rp = RoleDefine({
+    rp = RoleDefine('test', {
         User: TablePerm({
             User.id: {A.UPDATE},
             User.time: {A.READ}
@@ -33,6 +34,7 @@ def test_role_perm_default_and_append():
             append_perm={A.UPDATE}
         )
     })
+    rp.bind()
 
     assert rp._ability_table[User][A.READ] == {User.time, User.gender}
     assert rp._ability_table[User][A.UPDATE] == {User.id, User.time, User.gender}
@@ -48,7 +50,7 @@ def test_role_perm_based_on():
         time: int
         gender: str
 
-    rp0 = RoleDefine({
+    rp0 = RoleDefine('test', {
         User: TablePerm({
             User.id: {A.UPDATE},
             User.time: {A.READ}
@@ -58,7 +60,7 @@ def test_role_perm_based_on():
         )
     })
 
-    rp = RoleDefine({
+    rp = RoleDefine('test2', {
         User: TablePerm({
             User.id: {A.READ},
             User.time: {A.READ}
@@ -66,6 +68,9 @@ def test_role_perm_based_on():
             append_perm={A.UPDATE}
         )
     }, rp0)
+
+    rp0.bind()
+    rp.bind()
 
     assert rp._ability_table[User][A.READ] == {User.id, User.time, User.gender}
     assert rp._ability_table[User][A.UPDATE] == {User.id, User.time, User.gender}

@@ -2,12 +2,15 @@ import copy
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Type
+from typing import Dict, Tuple, Any, TYPE_CHECKING, Optional, List, Set, Iterable, Union, Sequence, Type, Callable
 
 from typing_extensions import Literal
 
+from pycrud.utils import UserObject
+
 if TYPE_CHECKING:
     from pycrud.types import EntityField, Entity
+    from pycrud.crud.base_crud import BaseCrud
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,8 @@ class A(Enum):
     READ = 'read'
     UPDATE = 'update'
 
-    ALL = {QUERY, CREATE, READ, UPDATE}
+
+#ALL = {A.QUERY, A.CREATE, A.READ, A.UPDATE}
 
 
 class Sentinel:
@@ -32,27 +36,28 @@ class Sentinel:
         return hash(self.val)
 
 # PermissionDesc = Dict[Type['RecordMapping'], Dict[Union[Any, Literal['*', '|']], set]]
-PermissionDesc = Dict[Type['RecordMapping'], 'TablePerm']
+PermissionDesc = Dict[Type['Entity'], 'TablePerm']
 ALLOW_DELETE = Sentinel('aabb')
 
 
 @dataclass
 class RoleDefine:
+    name: str
     permission_desc: PermissionDesc
-    based_on: 'RoleDefine' = None
-    match_text: Union[None, str] = None
+    based_on: Union['RoleDefine', str] = None
+
+    def __post_init__(self):
+        pass
 
     def __hash__(self):
         return id(self)
 
-    def __post_init__(self):
-        self.rebind()
-
-    def rebind(self):
+    def bind(self):
         self._ability_table: Dict[Type['Entity'], Dict[Union[A, ALLOW_DELETE], Set['EntityField']]] = {}
         # self._table_type: Optional[Type['RecordMapping']] = None
 
         if self.based_on:
+            assert isinstance(self.based_on, RoleDefine), 'based_on must be RoleDefine'
             self._ability_table = copy.deepcopy(self.based_on._ability_table)
 
         def solve_data(table: Type['Entity'], table_perm: TablePerm) -> Dict[str, Set[A]]:
@@ -145,3 +150,36 @@ class AbilityColumn:
 
     def __repr__(self):
         return '<Column %r.%r>' % (self.table, self.column)
+
+
+class PermInfo:
+    user: UserObject
+    role: RoleDefine
+    extra: Any
+
+    def __init__(self, user: UserObject = None, role: Union['RoleDefine', str] = None, extra: Any = None, *, skip_check=False):
+        self.user = user
+
+        if isinstance(role, str):
+            self.role = None
+            self._role_str = role
+        else:
+            self.role = role
+            self._role_str = None
+
+        self.extra = extra
+        self.skip_check = skip_check
+
+    def __bool__(self):
+        return not self.skip_check
+
+    def _init(self, crud: 'BaseCrud'):
+        if not self.role:
+            # 绑定 role define
+            if self._role_str is not None:
+                # 文本则取对应
+                self.role = crud.permission.get(self._role_str, None)
+                assert self.role, 'role not found by name: %s' % self._role_str
+            else:
+                # 传空则取默认
+                self.role = crud.default_role

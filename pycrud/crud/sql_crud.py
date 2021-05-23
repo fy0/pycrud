@@ -17,6 +17,7 @@ from pycrud.const import QUERY_OP_COMPARE, QUERY_OP_RELATION
 from pycrud.crud.base_crud import BaseCrud
 from pycrud.crud.query_result_row import QueryResultRow, QueryResultRowList
 from pycrud.error import ValueTypeNotAllowed
+from pycrud.permission import RoleDefine
 from pycrud.query import QueryInfo, QueryConditions, ConditionLogicExpr, ConditionExpr, NegatedExpr
 from pycrud.types import Entity, EntityField, IDList
 from pycrud.utils.json_ex import json_dumps_ex
@@ -137,11 +138,17 @@ class SQLExecuteResult:
 InsertValueTypes = Union[ValuesToCreate, Entity, Dict, MultiDict]
 
 
-@dataclass
 class SQLCrud(BaseCrud):
+    _permission: List[RoleDefine]
     entity2model: Dict[Type[Entity], Union[str, pypika.Table]]
 
+    def __init__(self, permission: List[RoleDefine], entity2model: Dict[Type[Entity], Union[str, pypika.Table]]):
+        super(SQLCrud, self).__init__(permission)
+        self.entity2model = entity2model
+
     def __post_init__(self):
+        super(SQLCrud, self).__post_init__()
+
         self.json_dumps_func = json_dumps_ex
         self._table_cache = {
             # 'mapping': {

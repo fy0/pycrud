@@ -15,7 +15,8 @@ from pycrud.utils.name_helper import camel_case_to_underscore_case, get_class_fu
 if TYPE_CHECKING:
     from pycrud.query import QueryInfo
     from pycrud.values import ValuesToUpdate, ValuesToCreate
-    from pycrud.crud.base_crud import PermInfo, BaseCrud
+    from pycrud.crud.base_crud import BaseCrud
+    from pycrud.permission import PermInfo
 
 IDList = List[Any]
 
@@ -202,7 +203,7 @@ class Entity(BaseModel, EntityBase):
         to_optional: Union[Literal['__all__'], Set[str], Dict[str, Any]] = None,
         prefix='*clone_',
         base_cls=sentinel
-    ) -> 'Entity':
+    ) -> Type['BaseModel']:
         if fields is sentinel:
             fields = set(cls.__fields__.keys())
 

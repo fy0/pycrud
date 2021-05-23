@@ -3,6 +3,7 @@ from typing import Mapping, TYPE_CHECKING, Type, Dict, Union
 
 from multidict import MultiDict
 
+from pydantic import BaseModel
 from pycrud.error import InvalidQueryConditionValue, InvalidQueryValue
 
 if TYPE_CHECKING:
@@ -107,7 +108,7 @@ class ValuesToUpdate(_ValuesToWrite):
     Class to store update values
     """
 
-    def __init__(self, data: Union[Dict, MultiDict, 'Entity'] = None, entity: Type['Entity'] = None):
+    def __init__(self, data: Union[Dict, MultiDict, BaseModel, 'Entity'] = None, entity: Type['Entity'] = None):
         """
         Examples:
         ValuesToUpdate(UserEntity({'name': 'John'}))

@@ -8,11 +8,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, Integer, String, Sequence
 
-from pycrud.crud.base_crud import PermInfo
 from pycrud.crud.ext.sqlalchemy_crud import SQLAlchemyCrud
 from pycrud.crud.query_result_row import QueryResultRow
 from pycrud.helpers.fastapi_ext import QueryDto, PermissionDependsBuilder
-from pycrud.permission import RoleDefine, TablePerm, A
+from pycrud.permission import RoleDefine, TablePerm, A, PermInfo
 from pycrud.query import QueryInfo
 from pycrud.types import Entity
 from pycrud.values import ValuesToUpdate

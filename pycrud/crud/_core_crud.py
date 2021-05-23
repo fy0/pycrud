@@ -8,7 +8,6 @@ from pycrud.types import Entity, IDList
 from pycrud.values import ValuesToUpdate
 
 
-@dataclass
 class CoreCrud:
     @abstractmethod
     async def insert_many(self, table: Type[Entity], values_list: Iterable[ValuesToUpdate], *, _perm=None) -> IDList:
@@ -19,7 +18,7 @@ class CoreCrud:
         pass
 
     @abstractmethod
-    async def delete(self, info: QueryInfo, *, _perm=None) -> int:
+    async def delete(self, info: QueryInfo, *, _perm=None) -> IDList:
         pass
 
     @abstractmethod

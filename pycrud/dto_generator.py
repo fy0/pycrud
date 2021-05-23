@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Type, Union, List, Any, TYPE_CHECKING, Iterable
+from typing import Type, Union, List, Any, TYPE_CHECKING, Iterable, Set, Literal
 
 from pydantic import constr
 from pydantic.main import BaseModel, create_model
@@ -52,6 +52,10 @@ class DTOGenerator:
         self.parent = parent
         self._cache = {}
 
+    @property
+    def id_type(self):
+        return self._get_parent_annotations().get('id', Any)
+
     @cache
     def _get_parent_annotations(self):
         cls = self.parent
@@ -62,11 +66,11 @@ class DTOGenerator:
                 all_an.update(an)
         return {k: v for k, v in all_an.items() if k in cls.__fields__}
 
-    def _get_perm_avail(self, role, ability: A):
+    def _get_perm_avail(self, role: str, ability: A) -> Union[Set[A], Literal[sentinel]]:
         if role is sentinel:
             return sentinel
 
-        if self.parent.crud and self.parent.crud.permission:
+        if self.parent.crud:
             p = self.parent.crud.permission
             role: RoleDefine = p.get(role)
             if role:
@@ -75,7 +79,7 @@ class DTOGenerator:
         return sentinel  # default
 
     @cache
-    def get_query_for_doc(self, role=sentinel) -> BaseModel:
+    def get_query_for_doc(self, role=sentinel) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.READ)
         all_an = self._get_parent_annotations()
 
@@ -85,6 +89,7 @@ class DTOGenerator:
                 if name not in avail: continue
             fields[f'{name}.{{op}}'] = (Union[v, List[v]], None)
 
+        # 注：create_model 创建出来的Model的__init__参数不一样，所以不能被fastapi自动识别
         return create_model(
             '*dto_doc_query_' + self.parent.__name__,
             __base__=_DocBaseModel,
@@ -92,7 +97,7 @@ class DTOGenerator:
         )
 
     @cache
-    def get_query(self, role=sentinel, *, from_http_query=False) -> BaseModel:
+    def get_query(self, role=sentinel, *, from_http_query=False) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.READ)
         cls = self.parent
         all_an = self._get_parent_annotations()
@@ -128,17 +133,17 @@ class DTOGenerator:
         )
 
     @cache
-    def get_create(self, role=sentinel) -> BaseModel:
+    def get_create(self, role=sentinel) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.CREATE)
-        return self.parent.clone(prefix='*dto_create_' + self.parent.__name__, fields=avail, base_cls=BaseModel)
+        return self.parent.clone(prefix='*dto_create_', fields=avail, base_cls=BaseModel)
 
     @cache
-    def get_read(self, role=sentinel) -> BaseModel:
+    def get_read(self, role=sentinel) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.READ)
-        return self.parent.clone(prefix='*dto_read_' + self.parent.__name__, fields=avail, base_cls=BaseModel)
+        return self.parent.clone(prefix='*dto_read_', fields=avail, base_cls=BaseModel)
 
     @cache
-    def get_update_v2(self, role=sentinel) -> BaseModel:
+    def get_update_v2(self, role=sentinel) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.UPDATE)
         cls = self.parent
         all_an = self._get_parent_annotations()
@@ -170,7 +175,7 @@ class DTOGenerator:
         )
 
     @cache
-    def get_update(self, role=sentinel):
+    def get_update(self, role=sentinel) -> Type[BaseModel]:
         avail = self._get_perm_avail(role, A.UPDATE)
         cls = self.parent
         all_an = self._get_parent_annotations()
@@ -194,8 +199,49 @@ class DTOGenerator:
                     fields[name + '.incr'] = (v, None)
                     fields[name + '.desc'] = (v, None)
 
+        assert len(fields), f'角色 {role} 对 {self.parent.__name__} 所有列均无 update 权限，永远无法通过校验'
+
         return create_model(
             '*dto_update_' + cls.__name__,
             __base__=BaseModel,
             **fields
+        )
+
+    @cache
+    def resp_create(self, role=sentinel):
+        cls = self.parent
+        model = self.get_read(role)
+        return create_model(
+            '*dto_resp_create_' + cls.__name__,
+            __base__=BaseModel,
+            __root__=(Union[List[self.id_type], List[model]], None)
+        )
+
+    @cache
+    def resp_update(self, role=sentinel):
+        cls = self.parent
+        model = self.get_read(role)
+        return create_model(
+            '*dto_resp_upadte_' + cls.__name__,
+            __base__=BaseModel,
+            __root__=(Union[List[self.id_type], List[model]], None)
+        )
+
+    @cache
+    def resp_delete(self, role=sentinel):
+        cls = self.parent
+        return create_model(
+            '*dto_resp_delete_' + cls.__name__,
+            __base__=BaseModel,
+            __root__=(List[self.id_type], None)
+        )
+
+    @cache
+    def resp_list(self, role=sentinel):
+        cls = self.parent
+        model = self.get_read(role)
+        return create_model(
+            '*dto_resp_list_' + cls.__name__,
+            __base__=BaseModel,
+            __root__=(List[model], None)
         )
