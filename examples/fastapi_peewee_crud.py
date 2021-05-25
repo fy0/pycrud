@@ -5,11 +5,11 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from playhouse.db_url import connect
+from pycrud import Entity, ValuesToUpdate, ValuesToCreate
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
-from pycrud.helpers.fastapi_ext import QueryDto
-from pycrud.query import QueryInfo
-from pycrud.types import Entity
-from pycrud.values import ValuesToUpdate
+from pycrud.helpers.fastapi_ext import PermissionDependsBuilder
+from pycrud.permission import RoleDefine
+from pycrud.utils import UserObject
 
 
 # ORM Initialize
@@ -44,6 +44,16 @@ c = PeeweeCrud(None, {
 }, db)
 
 
+class PDB(PermissionDependsBuilder):
+    @classmethod
+    async def validate_role(cls, user: UserObject, current_request_role: str) -> RoleDefine:
+        return c.default_role
+
+    @classmethod
+    async def get_user(cls, request: Request) -> UserObject:
+        pass
+
+
 # Web Service
 
 app = FastAPI()
@@ -56,27 +66,24 @@ app.add_middleware(
 )
 
 
-@app.post("/user/create")
+@app.post("/user/create", response_model=User.dto.resp_create())
 async def user_create(item: User.dto.get_create()):
-    return await c.insert_many(User, [item])  # response id list: [1]
+    return await c.insert_many(User, [ValuesToCreate(item)])  # response id list: [1]
 
 
-@app.get("/user/list")
-async def user_list(query_json=QueryDto(User)):
-    q = QueryInfo.from_json(User, query_json)
-    return [x.to_dict() for x in await c.get_list(q)]
+@app.get("/user/list", response_model=User.dto.resp_list())
+async def user_list(query=PDB.query_info_depends(User)):
+    return [x.to_dict() for x in await c.get_list(query)]
 
 
-@app.post("/user/update")
-async def user_list(item: User.dto.get_update(), query_json=QueryDto(User)):
-    q = QueryInfo.from_json(User, query_json)
-    return await c.update(q, ValuesToUpdate(item))
+@app.post("/user/update", response_model=User.dto.resp_update())
+async def user_list(item: User.dto.get_update(), query=PDB.query_info_depends(User)):
+    return await c.update(query, ValuesToUpdate(item))
 
 
-@app.post("/user/delete")
-async def user_delete(query_json=QueryDto(User)):
-    q = QueryInfo.from_json(User, query_json)
-    return await c.delete(q)  # response id list: [1]
+@app.post("/user/delete", response_model=User.dto.resp_delete())
+async def user_delete(query=PDB.query_info_depends(User)):
+    return await c.delete(query)
 
 
 print('Service Running ...')

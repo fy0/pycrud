@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Type, Union, List, Any, TYPE_CHECKING, Iterable, Set, Literal
+from typing import Type, Union, List, Any, TYPE_CHECKING, Iterable, Set, Literal, Optional
 
 from pydantic import constr
 from pydantic.main import BaseModel, create_model
@@ -87,7 +87,7 @@ class DTOGenerator:
         for name, v in all_an.items():
             if avail is not sentinel:
                 if name not in avail: continue
-            fields[f'{name}.{{op}}'] = (Union[v, List[v]], None)
+            fields[f'{name}.{{op}}'] = (v, None)
 
         # 注：create_model 创建出来的Model的__init__参数不一样，所以不能被fastapi自动识别
         return create_model(

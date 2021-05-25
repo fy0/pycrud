@@ -1,10 +1,10 @@
 import uvicorn
 
 from typing import Optional
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from pycrud import Entity, QueryResultRow, QueryInfo, ValuesToUpdate
+from pycrud import Entity, QueryResultRow, QueryInfo, ValuesToUpdate, ValuesToCreate
 from pycrud.permission import RoleDefine, TablePerm, A, PermInfo
 from pycrud.crud.ext.peewee_crud import PeeweeCrud
 from pycrud.helpers.fastapi_ext import PermissionDependsBuilder
@@ -13,13 +13,11 @@ from examples.model_peewee import db, UserModel, TopicModel
 
 
 # Crud Initialize
-from pycrud.utils import UserObject
-
 
 class User(Entity):
     id: Optional[int]
     nickname: str
-    is_admin: bool
+    is_admin: bool = False
     password: str = 'password'
 
     @classmethod
@@ -124,7 +122,7 @@ class PDB(PermissionDependsBuilder):
 @app.post("/user/create", response_model=User.dto.resp_create())
 async def user_create(item: User.dto.get_create(), perm=PDB.perm_info_depends()):
     """ 创建用户 role(visitor) """
-    return await c.insert_many_with_perm(User, [item], perm=perm)  # response id list: [1]
+    return await c.insert_many_with_perm(User, [ValuesToCreate(item)], perm=perm)  # response id list: [1]
 
 
 @app.get("/topic/list", response_model=Topic.dto.resp_list())

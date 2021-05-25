@@ -32,6 +32,6 @@ UserModel(nickname='a', password='password1').save()
 UserModel(nickname='b', password='password2').save()
 UserModel(nickname='c', password='password3', is_admin=True).save()
 
-TopicModel(title='topic one', user_id=1).save()  # user1
-TopicModel(title='topic two', user_id=1).save()
-TopicModel(title='topic three', user_id=2).save()  # user2
+TopicModel(title='topic one', user_id=1).save()  # by user1
+TopicModel(title='topic two', user_id=1).save()  # by user1
+TopicModel(title='topic three', user_id=2).save()  # by user2

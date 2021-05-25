@@ -67,7 +67,7 @@ class ValuesToCreate(_ValuesToWrite):
     Class to store create values
     """
 
-    def __init__(self, data: Union[Dict, MultiDict, 'Entity'] = None, entity: Type['Entity'] = None):
+    def __init__(self, data: Union[Dict, MultiDict, BaseModel, 'Entity'] = None, entity: Type['Entity'] = None):
         from pycrud.types import Entity
 
         # check if data is an Entity

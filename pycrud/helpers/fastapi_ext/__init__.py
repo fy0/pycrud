@@ -51,7 +51,7 @@ class PermissionDependsBuilder:
 
     @classmethod
     def query_info_depends(cls, entity: Type[Entity], request_role: str = sentinel):
-        async def get_query_info(request: Request) -> QueryInfo:
+        async def get_query_info(request: Request, **kwargs) -> QueryInfo:
             # fastapi 不支持部分json schema语法
             return QueryInfo.from_json(entity, request.query_params, from_http_query=True)
 
@@ -59,12 +59,12 @@ class PermissionDependsBuilder:
 
         def make_param(key, type_):
             key2 = key.replace('.{op}', '_op')
-            return Parameter(key2, Parameter.KEYWORD_ONLY, annotation=Any, default=Query(None, alias=key))
+            return Parameter(key2, Parameter.KEYWORD_ONLY, annotation=type_.type_, default=Query(None, alias=key))
 
         doc_model = entity.dto.get_query_for_doc(request_role)
         params = [
             Parameter('request', Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),
-            # *[make_param(k, v) for k, v in doc_model.__fields__.items()],
+            *[make_param(k, v) for k, v in doc_model.__fields__.items()],
         ]
 
         get_query_info.__signature__ = Signature(params)
