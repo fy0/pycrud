@@ -21,7 +21,7 @@ Features:
 ### Install:
 
 ```bash
-pip install pycrud==1.0.0a0
+pip install pycrud==1.0.0a1
 ```
 
 ### Examples:
@@ -90,8 +90,18 @@ async def user_delete(query=PDB.query_info_depends(User)):
 
 print('Service Running ...')
 uvicorn.run(app, host='0.0.0.0', port=3000)
-
 ```
+
+See docs at `http://localhost:3000/redoc`
+
+You can make requests like:
+
+`http://localhost:3000/topic/list?id.eq=1
+http://localhost:3000/topic/list?id.gt=1
+http://localhost:3000/topic/list?id.in=[2,3]
+http://localhost:3000/topic/list?user_id.eq=1
+`
+
 
 #### CRUD service with permission
 
